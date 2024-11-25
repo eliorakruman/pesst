@@ -77,7 +77,8 @@ try:
                 d.clear()
                 d.print(str(tally))
             else:
-                # link with lights and audio
+                # TODO: link with lights and audio
+                print("")
         
         time.sleep(.5)
 
