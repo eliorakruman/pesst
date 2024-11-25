@@ -5,7 +5,6 @@ import time
 # lcd display imports
 from lcd1602 import LCD1602
 from machine import I2C,Pin
-from utime import sleep_ms
 
 #sensor setup
 front_sensor = ADC(Pin(26))
@@ -19,6 +18,7 @@ ticks_since = 0 # to record timing between front and back triggers
 diff = 0 # updates tally
 COOLDOWN_MULTIPLIER = 20
 HISTORY_SIZE = 10
+MAX_CAPACITY = 5
 
 # lcd setup
 i2c = I2C(1,scl=Pin(7), sda=Pin(6), freq=400000)
@@ -72,9 +72,12 @@ try:
         
         if diff != 0:
             tally += diff
-            d.clear()
-            d.print(str(tally))
             diff = 0
+            if tally <= MAX_CAPACITY:
+                d.clear()
+                d.print(str(tally))
+            else:
+                # link with lights and audio
         
         time.sleep(.5)
 
