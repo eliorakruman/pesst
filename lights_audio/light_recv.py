@@ -13,10 +13,20 @@ color_codes: dict[str, tuple[int, int, int]] = {"red": (255, 0, 0), "white": (25
 for i in range(n):
     np[i] = (255, 255, 255)
 
+wait_steps = -1
 
 client.connect(("172.20.164.94", 1234))
 while True:
     color = client.recv(1024).decode()
+    if wait_steps == 0:
+        wait_steps = -1
+        for i in range(n):
+            np[i] = (255, 255, 255)
     if color is not None and color in color_codes:
         for i in range(n):
             np[i] = color_codes[color]
+        if color != "blue":
+            wait_steps = 20
+    if wait_steps != -1:
+        wait_steps -= 1
+
