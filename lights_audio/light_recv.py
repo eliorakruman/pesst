@@ -17,6 +17,6 @@ for i in range(n):
 client.connect(("172.20.164.94", 1234))
 while True:
     color = client.recv(1024).decode()
-    if color is not None:
+    if color is not None and color in color_codes:
         for i in range(n):
             np[i] = color_codes[color]
