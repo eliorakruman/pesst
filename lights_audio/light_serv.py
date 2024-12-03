@@ -18,7 +18,7 @@ rec_flag: bool = False
 sens_flag: bool = False
 light_flag: bool = False
 clients: list = []
-reciever = None
+receiver = None
 while not rec_flag and not (rec_flag == sens_flag == light_flag):
     # Establish connection with client.
     c, addr = sock.accept()
@@ -31,8 +31,8 @@ while not rec_flag and not (rec_flag == sens_flag == light_flag):
         clients.append(c)
     elif handshake == "light_system":
         light_flag = True
-        reciever = c
+        receiver = c
     print('Got connection from', addr)
 while True:
     for client in clients:
-        check_recv(client.recv(1024).decode(), reciever)
+        check_recv(client.recv(1024).decode(), receiver)

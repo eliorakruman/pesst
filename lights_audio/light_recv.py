@@ -16,6 +16,7 @@ for i in range(n):
 wait_steps = -1
 
 client.connect(("172.20.164.94", 1234))
+client.send("light_system".encode())
 while True:
     color = client.recv(1024).decode()
     if wait_steps == 0:
@@ -29,4 +30,3 @@ while True:
             wait_steps = 20
     if wait_steps != -1:
         wait_steps -= 1
-
