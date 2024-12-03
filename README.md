@@ -9,3 +9,10 @@ individual attempts to enter the event. We will also have a tallying system that
 many people are in the event at one time. The system will be designed in stages. The first stage will include the
 basic security features with facial recognition, the alarm, and the tallying device. The second stage will involve
 advanced light features and an audio system.
+
+# Requirements
+## Lights and Audio
+- ffplay
+- yt-dlp
+
+These must be on your PATH
