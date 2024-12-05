@@ -1,13 +1,5 @@
-#lcd1602 imports
 from machine import I2C, Pin
 import time
-
-#webserver imports
-import network
-import socket
-import binascii
-from time import sleep
-
 class LCD1602(object):
     #commands
     LCD_CLEARDISPLAY = 0x01
@@ -206,79 +198,7 @@ class LCD1602_RGB(LCD1602):
         elif(color == 3):
             self.set_rgb(0, 0, 255)
         else:
-            return      
-     
-#webserver
+            return
         
-ssid = 'hhhh'
-
-i2c = I2C(1,scl=Pin(7), sda=Pin(6), freq=400000)
-d = LCD1602(i2c, 2, 16)
-
-d.display() #启动显示屏
-sleep(1)
-d.clear() #清理显示
-d.print('Hello ') #显示字符
-
-sleep(1)
-d.setCursor(0, 1) #规定显示位置，行和列都从0开始
-d.print('world ')
-
-def connect():
-    #Connect to WLAN
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect(ssid)
-    print(wlan.status())
-    
-    while wlan.isconnected() == False:
-        print('Waiting for connection...', wlan.status())
-        sleep(3)
-    ip = wlan.ifconfig()[0]
-    print(f'Connected on {ip}')
-    return ip
-
-def open_socket(ip):
-    # Open a socket
-    address = (ip, 80)
-    connection = socket.socket()
-    connection.bind(address)
-    connection.listen(1)
-    return connection
-
-def webpage():
-    html = f"""
-        <form action="/display">
-            <label for="display">Write your message!</label>
-            <input type="text" id="display" name="display"><br><br>
-        </form>
-        <form action="/clear">
-            <input type="submit" value="Clear"/>
-        </form>
-        """
-    return str(html)
-
-def serve(connection):
-    while True:
-        client = connection.accept()[0]
-        request = client.recv(1024)
-        request = str(request)
-        print(request)
-        try:
-            request = request.split()[1]
-        except IndexError:
-            pass  
-        if request == '/display?':
-            d.write()
-        if request == '/clear?':
-            d.clear()
-        html = webpage()
-        client.send(html)
-        client.close()
         
-try:
-    ip = connect()
-    connection = open_socket(ip)
-    serve(connection)
-except KeyboardInterrupt:
-   machine.reset()
+

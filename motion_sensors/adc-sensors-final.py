@@ -27,11 +27,6 @@ d = LCD1602(i2c, 2, 16)
 d.clear()
 d.print(tally)
 
-# client-server
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(("172.20.164.94", 1234))
-client.send("motion_sensor".encode()) # identifying client
-
 def convert_to_voltage(adc_value, v_ref=3.3):
     return (adc_value / 65535) * v_ref
 
@@ -62,8 +57,6 @@ try:
                 diff -=1
                 back_triggered = False
                 print("exit")
-                if tally == MAX_CAPACITY:
-                    client.send("white".encode()) # neutral lights
             else: # front only: mid-entry
                 front_triggered = True
                 
@@ -83,8 +76,6 @@ try:
             if tally <= MAX_CAPACITY:
                 d.clear()
                 d.print(str(tally))
-                if tally == MAX_CAPACITY:
-                    client.send("blue".encode()) # max capacity lights
             else:
                 print("")
                 
@@ -94,4 +85,3 @@ try:
 except KeyboardInterrupt:
     print("Program terminated.")
     
-client.close()
