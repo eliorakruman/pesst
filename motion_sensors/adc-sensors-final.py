@@ -12,8 +12,8 @@ import network
 import socket
 
 # sensor setup
-front_sensor = ADC(Pin(26))
-back_sensor = ADC(Pin(27))
+front_sensor = ADC(Pin(27)) # A1
+back_sensor = ADC(Pin(26)) # A0
 back_triggered = False
 front_triggered = False
 hit_max = False
@@ -62,7 +62,7 @@ def print_lines():
 try:
     
     while True:
-        ticks_since +=1;
+        ticks_since +=1
     
         # reset ticks if too much time passed
         if ticks_since == COOLDOWN_MULTIPLIER:
