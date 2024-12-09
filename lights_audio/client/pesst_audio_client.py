@@ -12,6 +12,10 @@ class AudioClient:
         self.reader = reader
         self.writer = writer
     
+    async def close(self):
+        self.writer.close()
+        await self.writer.wait_closed()
+    
     async def start(self, seconds: float = 0) -> bool:
         self.writer.write(START.encode())
         self.writer.write(f" {round(seconds, 3)}".encode())
@@ -24,23 +28,19 @@ class AudioClient:
         return await self.is_ok()
     
     async def upload(self, file_path) -> bool:
-        self.writer.write(UPLOAD.encode())
+        with open(file_path, "rb") as f:
+            self.writer.write(f"{UPLOAD} {len(f.readlines())}".encode())
         await self.writer.drain()
         # Give server time to delete previous file
         if not await self.is_ok():
             return False
         with open(file_path, "rb") as f:
             self.writer.writelines(f)
+        await self.writer.drain()
         return await self.is_ok()
     
     async def is_ok(self) -> bool:
         res = (await self.reader.readexactly(2)).decode()
-        try:
-            extra_data = await self.reader.read(1)  # Attempt to read one more byte
-            if extra_data:
-                raise InvalidFormatError(f"Unexpected extra data received: {extra_data}")
-        except IncompleteReadError:
-            pass 
         if res == OK:
             return True
         if res == ERR:

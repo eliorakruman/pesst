@@ -1,6 +1,13 @@
 from protocol import DONE, PAUSE, START, UPLOAD, OK, ERR
 from asyncio import StreamReader, StreamWriter, start_server, gather, sleep
 
+# Prints timestamps and prints colors instead of using hardware lights
+DEBUG = False
+
+def log(s: str):
+    if DEBUG:
+        print(s)
+
 try:
     from time import ticks_ms, ticks_diff
 except ImportError:
@@ -12,12 +19,12 @@ def gettime():
     if ticks_ms:
         return ticks_ms()
     else:
-        return time_ns() * 1_000_000
+        return time_ns() / 1_000_000
 
 def gettimediff(t1, t2):
     if ticks_diff:
-        return ticks_diff(t1, t2)
-    return t1 - t2
+        return ticks_diff(t1, t2) / 1000
+    return (t1 - t2) / 1000
 
 SOUND: list[tuple[float, int, int, int]] = [(0, 255, 255, 255)]  # timestamp, r, g, b
 DELAY = 0
@@ -25,6 +32,7 @@ DELAY = 0
 class AudioServer:
     def __init__(self, host: str, port: int):
         self.sound_index = 0
+        self.prev_index = -1
         self.host = host
         self.port = port
         self.paused = False
@@ -54,21 +62,24 @@ class AudioServer:
                     self.paused = True
                     await self.send_ok(writer)
                 elif cmd == START:
-                    if len(tokens) != 2:
+                    if len(tokens) != 2 or not tokens[1].isdigit():
                         await self.send_err(writer)
                         continue
-                    self.paused = False
-                    self.sound_index = 0
-                    self.timestamp = float(tokens[1])
-                    self.last_time = gettime()
+                    self.reset(float(tokens[1]))
                     await self.send_ok(writer)
                 elif cmd == UPLOAD:
+                    if len(tokens) != 2 or not tokens[1].isdigit():
+                        await self.send_err(writer)
+                        continue
+                    self.reset(0)
+                    num_lines = int(tokens[1])
                     SOUND.clear()
                     SOUND.append((0, 255, 255, 255))
                     await self.send_ok(writer)
                     error = False
                     
-                    while tokens := (await reader.readline()).decode().split():
+                    for _ in range(num_lines):
+                        tokens = (await reader.readline()).decode().split()
                         if len(tokens) != 4:
                             error = True
                             break
@@ -79,20 +90,31 @@ class AudioServer:
                         await self.send_ok(writer)
                 else:
                     await self.send_err(writer)
+    
+    def reset(self, time: float):
+        self.paused = False
+        self.sound_index = 0
+        self.timestamp = time
+        self.last_time = gettime()
                 
     async def update_lights(self):
         while True:
             if not self.paused:
                 time = gettime()
-                time_diff = gettimediff(time, self.last_time) / 1000
+                time_diff = gettimediff(time, self.last_time)
+                log("Timestamp: " + str(self.timestamp))
                 self.timestamp += time_diff
                 self.last_time = time
 
             color = self.find_color_from_timestamp()
-            if not self.paused and self.sound_index != 0:
-                self.display_color(color)
+            if not self.paused and self.sound_index != 0 and self.sound_index != self.prev_index:
+                self.prev_index = self.sound_index
+                if DEBUG:
+                    self.display_color_dbg(color)
+                else:
+                    self.display_color(color)
 
-            await sleep(0.001)
+            await sleep(0.01)
     
     def find_color_from_timestamp(self) -> tuple[int, int, int]:
         while self.sound_index < len(SOUND)-1 and SOUND[self.sound_index][0] < self.timestamp:
@@ -100,8 +122,12 @@ class AudioServer:
         _, r, g, b = SOUND[self.sound_index]
         return (r, g, b)
     
+    def display_color_dbg(self, rgb_color: tuple[int, int, int]):
+        print(f"T:{self.timestamp}: {{ .red={rgb_color[0]}, .green={rgb_color[1]}, .blue={rgb_color[2]} }}")
+    
     def display_color(self, rgb_color: tuple[int, int, int]):
-        print(f"{{ .red={rgb_color[0]}, .green={rgb_color[1]}, .blue={rgb_color[2]} }}")
+        # TODO: Modify here to actually change the hardware lights
+        ...
     
     
     async def send_err(self, writer: StreamWriter):

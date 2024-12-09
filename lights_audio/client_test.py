@@ -8,7 +8,8 @@ async def main():
     await client.connect()
     await client.start()
     await client.pause()
-    await client.upload("./client/pesst_audio.py")
+    await client.upload("./songs/Playboi Carti - Evil Jordan⧸EVILJ0RDAN (Official Lyric Video) [Y_tXa6IT3i4].mp3.color")
+    await client.start()
 
 if __name__ == '__main__':
     run(main())
