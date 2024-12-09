@@ -1,121 +1,95 @@
 import asyncio
-import re
+import os
+import json
 
-"""
-TODO: Pause and Resume are NOT WORING AGH
-"""
-
-class AudioPlayer:
-    def __init__(self, filepath):
+class MPVWrapper:
+    def __init__(self, filepath, socket_path="/tmp/mpvsocket"):
         self.filepath = filepath
+        self.socket_path = socket_path
         self.process = None
-        self._paused = False
-        self._current_time = 0.0
-        self._task = None
 
     async def start(self):
-        """Start the ffplay process."""
-        if self.process:
-            raise RuntimeError("Playback already started.")
-        
+        """Start the mpv player with IPC enabled."""
         self.process = await asyncio.create_subprocess_exec(
-            'ffplay', '-autoexit', '-nodisp', '-i', self.filepath,
-            stdin=asyncio.subprocess.PIPE,
+            'mpv', f'--input-ipc-server={self.socket_path}', self.filepath,
             stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE  # Capture stderr for timestamps
+            stderr=asyncio.subprocess.DEVNULL
         )
+        # Wait until the IPC server socket is ready
+        for _ in range(10):  # Retry up to 10 times
+            if os.path.exists(self.socket_path):
+                return
+            await asyncio.sleep(0.1)
+        raise RuntimeError("Failed to start mpv IPC server.")
 
-        self._task = asyncio.create_task(self._read_stderr())
-    
-    async def _read_stderr(self):
-        """Read and parse ffplay's stderr for timestamp updates."""
-        if not self.process or not self.process.stderr:
-            return
-        
-        timestamp_pattern = re.compile(r"time=(\d+:\d+:\d+\.\d+)")
-        
-        while True:
-            line = await self.process.stderr.readline()
-            if not line:
-                break
-            decoded_line = line.decode('utf-8').strip()
-            
-            match = timestamp_pattern.search(decoded_line)
-            if match:
-                time_str = match.group(1)
-                self._current_time = self._parse_timestamp(time_str)
-    
-    def _parse_timestamp(self, time_str):
-        """Convert timestamp string (hh:mm:ss.ms) to seconds."""
-        h, m, s = map(float, time_str.split(':'))
-        return h * 3600 + m * 60 + s
-    
     async def send_command(self, command):
-        """Send a command to the ffplay process."""
-        if not self.process or self.process.stdin is None:
-            raise RuntimeError("Playback process is not running.")
-        self.process.stdin.write(f'{command}\n'.encode())
-        await self.process.stdin.drain()
-    
+        """Send a JSON command to the mpv IPC socket and optionally receive a response."""
+        if not os.path.exists(self.socket_path):
+            raise RuntimeError(f"Socket {self.socket_path} does not exist.")
+        
+        try:
+            reader, writer = await asyncio.open_unix_connection(self.socket_path)
+            writer.write((command + '\n').encode())
+            await writer.drain()
+            response = await reader.read(1024)  # Read response if available
+            writer.close()
+            await writer.wait_closed()
+            return response.decode().strip()
+        except Exception as e:
+            print(f"Failed to send command: {e}")
+            return None
+
     async def play(self):
-        """Start playback (resume if paused)."""
-        if not self.process:
-            await self.start()
-        elif self._paused:
-            await self.send_command('p')  # 'p' toggles play/pause in ffplay
-            self._paused = False
-    
+        """Resume playback."""
+        await self.send_command('{"command": ["set_property", "pause", false]}')
+
     async def pause(self):
         """Pause playback."""
-        if self.process and not self._paused:
-            await self.send_command('p')  # 'p' toggles play/pause in ffplay
-            self._paused = True
-    
+        await self.send_command('{"command": ["set_property", "pause", true]}')
+
     async def stop(self):
-        """Stop playback and terminate the process."""
+        """Stop playback."""
         if self.process:
             self.process.terminate()
             await self.process.wait()
             self.process = None
-            self._paused = False
-            self._current_time = 0.0
-            if self._task:
-                self._task.cancel()
-    
-    async def get_timestamp(self):
-        """Get the current playback timestamp in seconds."""
-        return self._current_time
-    
-    async def wait(self):
-        """Wait for the playback to finish."""
-        if self.process:
-            await self.process.wait()
 
-# Usage example
+    async def get_timestamp(self):
+        """Retrieve the current playback timestamp in seconds."""
+        response = await self.send_command('{"command": ["get_property", "time-pos"]}')
+        if response:
+            try:
+                result = json.loads(response)
+                return result.get("data", None)  # Return the timestamp if available
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON response: {e}")
+        return None
+
+# Example usage
 async def main():
-    player = AudioPlayer("./songs/VIOLENCE [ZZTXFr6lowI].mp3")
-    
-    await player.play()
+    player = MPVWrapper("./songs/Playboi Carti - Evil Jordan⧸EVILJ0RDAN (Official Lyric Video) [Y_tXa6IT3i4].mp3")
+    await player.start()
     print("Playing...")
-    await asyncio.sleep(2)  # Let it play for 2 seconds
+    await asyncio.sleep(5)  # Let it play for 5 seconds
     
-    current_time = await player.get_timestamp()
-    print(f"Current timestamp: {current_time:.2f} seconds")
+    timestamp = await player.get_timestamp()
+    print(f"Current timestamp: {timestamp} seconds")
     
+    print("Pausing...")
     await player.pause()
-    print("Paused...")
-    await asyncio.sleep(10)
+    await asyncio.sleep(2)  # Wait while paused
     
+    timestamp = await player.get_timestamp()
+    print(f"Current timestamp: {timestamp} seconds (paused)")
+    
+    print("Resuming...")
     await player.play()
-    print("Resumed...")
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)  # Let it play for 5 more seconds
     
-    current_time = await player.get_timestamp()
-    print(f"Current timestamp: {current_time:.2f} seconds")
+    timestamp = await player.get_timestamp()
+    print(f"Current timestamp: {timestamp} seconds (resumed)")
     
     await player.stop()
     print("Stopped.")
 
-# Run the example
-if __name__ == '__main__':
-    asyncio.run(main())
+asyncio.run(main())

@@ -12,7 +12,7 @@ advanced light features and an audio system.
 
 # Requirements
 ## Lights and Audio
-- ffplay
-- yt-dlp
+- mpv : brew install mpv
+- yt-dlp : pip install pt-dlp
 
 These must be on your PATH
