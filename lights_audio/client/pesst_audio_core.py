@@ -1,9 +1,10 @@
+import asyncio
 from pathlib import Path
-from os.path import splitext
+from os.path import splitext # type: ignore
 from subprocess import run, CalledProcessError
 from typing import Optional
-from pesst_audio_player import AudioPlayer
-from pesst_audio_client import AudioClient
+from client.pesst_audio_player import MPVWrapper
+from client.pesst_audio_client import AudioClient
 
 SONG_DIRECTORY = "songs/"
 AUDIO_FORMAT = "mp3"
@@ -15,11 +16,13 @@ PLAYING: bool = True
 PREVIOUS_QUEUE = []
 PREVIOUS_PLAYING = True
 
-FFPLAY: Optional[AudioPlayer] = None
+MUSIC: Optional[MPVWrapper] = None
 LIGHTS: AudioClient = AudioClient("127.0.0.1", 8080)
-LIGHTS.connect() # TODO: Do I need to await this? 
 
-async def tick():
+async def setup():
+    await LIGHTS.connect() 
+
+async def queue_handler():
     """
     Compares Current State to Previous State and dispatches events to ffplay and raspberry PI
     NOTE: Only 1 event can happen a tick
@@ -30,45 +33,52 @@ async def tick():
     global PLAYING
     global PREVIOUS_QUEUE
     global PREVIOUS_PLAYING
-    global FFPLAY
+    global MUSIC
+    global LIGHTS
 
-    toggle_pause: bool = PLAYING != PREVIOUS_PLAYING
-    next_song = QUEUE != PREVIOUS_QUEUE
-    
-    if not FFPLAY:
-        return
+    while True:
+        await asyncio.sleep(0.1)
+        if MUSIC and MUSIC.ended:
+            print("ENDED")
+            QUEUE.pop(0)
 
-    if toggle_pause:
-        # TODO: How much of this do I need to await? Several don't have dependencies between eachother
-        if PLAYING:
-            FFPLAY.play()
-            await FFPLAY.get_timestamp()
-            LIGHTS.start(await FFPLAY.get_timestamp())
-        else:
-            FFPLAY.pause()
-    elif next_song:
-        if QUEUE:
-            FFPLAY.stop()
-            FFPLAY = AudioPlayer(QUEUE[0])
-            FFPLAY.start()
-        else: # No songs left
-            FFPLAY.stop()
-            FFPLAY = None
-    else:
-        return
-    
-    PREVIOUS_QUEUE = QUEUE
-    PREVIOUS_PLAYING = PLAYING
-    QUEUE = QUEUE.copy()
+        pause: bool = not PLAYING and PREVIOUS_PLAYING
+        unpause: bool = PLAYING and not PREVIOUS_PLAYING
+        next_song: bool = bool((not PREVIOUS_QUEUE and QUEUE) or (QUEUE and PREVIOUS_QUEUE[0] != QUEUE[0]))
+        no_songs: bool = bool(PREVIOUS_QUEUE and not QUEUE)
+
+        if pause and MUSIC:
+            await MUSIC.pause()
+        elif unpause and MUSIC:
+            await MUSIC.play()
+        elif next_song:
+            await play_next_song(QUEUE[0])
+        elif no_songs and MUSIC:
+            await MUSIC.stop()
+            MUSIC = None
+        
+        PREVIOUS_QUEUE = QUEUE
+        PREVIOUS_PLAYING = PLAYING
+        QUEUE = QUEUE.copy()
+
+async def play_next_song(path: Path):
+    global MUSIC
+    global PLAYING
+    PLAYING = True
+    if MUSIC:
+        await MUSIC.stop()
+    MUSIC = MPVWrapper(SONG_DIRECTORY / path)
+    await MUSIC.start()
+    await asyncio.sleep(0.1)
         
 
-def add_songs(url: list[str]) -> list[Path]:
+def add_songs(urls: list[str]) -> list[str]:
     command = [
         "yt-dlp",
         "-P", SONG_DIRECTORY,
         "--extract-audio",  # Optional: Extract only audio
         "--audio-format", AUDIO_FORMAT,  # Optional: Convert to mp3 format
-        *url
+        *urls
     ]
 
     # Run the command
@@ -78,12 +88,12 @@ def add_songs(url: list[str]) -> list[Path]:
         return [f"Error occurred while downloading: {e}"]
 
     # Parse the yt-dlp output
-    yt_dlp_output = result.stdout.splitlines()
+    yt_dlp_output = result.stdout.splitlines() # type: ignore
     add_to_queue: list[Path] = [clean_downloaded(line, "."+AUDIO_FORMAT) for line in yt_dlp_output if line.startswith("[download] Destination")]
     add_to_queue.extend([clean_already_downloaded(line) for line in yt_dlp_output if "has already been downloaded" in line])
     
     QUEUE.extend(add_to_queue)
-    return add_to_queue
+    return [str(s) for s in add_to_queue]
     
 def clean_already_downloaded(s: str) -> Path:
     # Input Format: [download] {SONG_DIRECTORY}/{SONG_NAME} has already been downloaded
@@ -98,15 +108,16 @@ def clean_downloaded(s: str, actual_extension: str) -> Path:
 
 
 def list_queue() -> list[str]:
-    return [str(song) for song in QUEUE]
+    return [f"{i}: {str(song)}" for i, song in enumerate(QUEUE)]
 
 def delete_songs(songs: list[str]) -> list[str]:
+    global QUEUE
     try:
-        song_indeces: list[int] = map(int, songs)
+        song_indeces: list[int] = list(map(int, songs))
     except ValueError:
         return ["Not a list of integers"]
     
-    removed_songs = [song for i, song in enumerate(QUEUE) if i in song_indeces]
+    removed_songs = [str(song) for i, song in enumerate(QUEUE) if i in song_indeces]
     QUEUE = [song for i, song in enumerate(QUEUE) if i not in song_indeces]
     return removed_songs
         
@@ -121,3 +132,7 @@ def pause():
 
 def clear_queue():
     QUEUE.clear()
+
+async def exit():
+    if MUSIC:
+        await MUSIC.stop()

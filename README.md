@@ -16,3 +16,19 @@ advanced light features and an audio system.
 - yt-dlp : pip install pt-dlp
 
 These must be on your PATH
+
+This was made very last minute, so there are some quirks:
+- After queuing a song, press enter to show the prompt again
+- Exiting doesn't stop the program since the MUSIC and SONG player task is still running
+- I have no clue why     
+
+``` python
+cli_task = asyncio.create_task(cli())
+queue_handler_task = asyncio.create_task(queue_handler()) 
+await asyncio.gather(cli_task, queue_handler_task)
+```
+works but 
+``` python
+await asyncio.gather(cli(), queue_handler())
+```
+doesn't
