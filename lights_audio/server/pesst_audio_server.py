@@ -1,8 +1,19 @@
+from asyncio import run
+try:
+    import machine
+    import network
+    import neopixel
+except ImportError:
+    machine = ...
+    ...
+    
+
 from protocol import DONE, PAUSE, START, UPLOAD, OK, ERR
 from asyncio import StreamReader, StreamWriter, start_server, gather, sleep
 
 # Prints timestamps and prints colors instead of using hardware lights
 DEBUG = True
+ON_PICO = False
 
 def log(s: str):
     if DEBUG:
@@ -30,7 +41,14 @@ SOUND: list[tuple[float, int, int, int]] = [(0, 255, 255, 255)]  # timestamp, r,
 DELAY = 0
 
 class AudioServer:
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str = "10.42.0.100", port: int = 8080, pin_number: int = 1, led_count: int = 60):
+        try:
+            pin = machine.Pin(pin_number)
+            self.led_count = led_count
+            self.np = neopixel.NeoPixel(pin, led_count)
+        except:
+            if ON_PICO:
+                raise
         self.sound_index = 0
         self.prev_index = -1
         self.host = host
@@ -38,12 +56,28 @@ class AudioServer:
         self.paused = False
         self.timestamp = 0
         self.last_time = gettime()
+        self.wlan = None
 
     async def run(self):
+        if ON_PICO:
+            await self.wlan_connect()
         await gather(
             start_server(self.listen, self.host, self.port),
             self.update_lights()
             )
+
+    async def wlan_connect(self):
+        wlan = network.WLAN(network.STA_IF)
+        self.wlan = wlan
+        wlan.active(True)
+        wlan.connect('bob')
+        while True:
+            print('Waiting for connection...', wlan.status() )
+            await sleep(1)
+            if wlan.isconnected():
+                ip = wlan.ifconfig()[0]
+                print(f'Connected on {ip}')
+                return
     
     async def listen(self, reader: StreamReader, writer: StreamWriter):
         print("Listening...")
@@ -110,10 +144,10 @@ class AudioServer:
             color = self.find_color_from_timestamp()
             if not self.paused and self.sound_index != 0 and self.sound_index != self.prev_index:
                 self.prev_index = self.sound_index
-                if DEBUG:
-                    self.display_color_dbg(color)
-                else:
+                if ON_PICO:
                     self.display_color(color)
+                else:
+                    self.display_color_dbg(color)
 
             await sleep(0.01)
     
@@ -127,8 +161,10 @@ class AudioServer:
         print(f"T:{self.timestamp}: {{ .red={rgb_color[0]}, .green={rgb_color[1]}, .blue={rgb_color[2]} }}")
     
     def display_color(self, rgb_color: tuple[int, int, int]):
-        # TODO: Modify here to actually change the hardware lights
-        ...
+        print("display color")
+        for i in range(self.led_count):
+            self.np[i] = rgb_color
+            self.np.write()
     
     
     async def send_err(self, writer: StreamWriter):
@@ -138,3 +174,6 @@ class AudioServer:
     async def send_ok(self, writer: StreamWriter):
         writer.write(OK.encode())
         await writer.drain()
+    
+if __name__ == '__main__':
+    run(AudioServer().run())

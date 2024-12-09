@@ -50,7 +50,6 @@ async def queue_handler():
             QUEUE.pop(0)
         
         if SYN_COUNTDOWN == 0 and MUSIC:
-            print("SYN")
             await LIGHTS.start(await MUSIC.get_timestamp() or 0)
 
         pause: bool = not PLAYING and PREVIOUS_PLAYING
