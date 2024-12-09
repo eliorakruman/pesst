@@ -2,7 +2,7 @@ from protocol import DONE, PAUSE, START, UPLOAD, OK, ERR
 from asyncio import StreamReader, StreamWriter, start_server, gather, sleep
 
 # Prints timestamps and prints colors instead of using hardware lights
-DEBUG = False
+DEBUG = True
 
 def log(s: str):
     if DEBUG:
@@ -54,6 +54,7 @@ class AudioServer:
             print(tokens)
             if tokens:
                 cmd = tokens[0]
+                log(cmd)
                 if cmd == DONE:
                     writer.close()
                     await writer.wait_closed()
@@ -62,7 +63,7 @@ class AudioServer:
                     self.paused = True
                     await self.send_ok(writer)
                 elif cmd == START:
-                    if len(tokens) != 2 or not tokens[1].isdigit():
+                    if len(tokens) != 2:
                         await self.send_err(writer)
                         continue
                     self.reset(float(tokens[1]))

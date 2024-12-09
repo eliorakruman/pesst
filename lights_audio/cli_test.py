@@ -4,6 +4,7 @@ from client.pesst_audio_core import setup, queue_handler
 from asyncio import gather, run
 
 async def main():
+    await setup()
     cli_task = asyncio.create_task(cli())
     queue_handler_task = asyncio.create_task(queue_handler())
 

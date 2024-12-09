@@ -1,5 +1,6 @@
 import asyncio
 import os
+from typing import Optional
 import json
 
 class MPVWrapper:
@@ -91,7 +92,7 @@ class MPVWrapper:
         if self.event_task:
             self.event_task.cancel()
 
-    async def get_timestamp(self):
+    async def get_timestamp(self) -> Optional[int]:
         """Retrieve the current playback timestamp in seconds."""
         response = await self.send_command('{"command": ["get_property", "time-pos"]}')
         if response:
