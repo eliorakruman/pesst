@@ -18,9 +18,9 @@ SYNTAX
 This is using Extended Backus Naur Form. All plain text is quoted with single quotes. A space does not mean theres actually a space unless its quoted!
 
 <FILE>      = <header> '\n' <body>
-<header>    = \d+ '.' \d{0,3}    # {0,3} may not be accurate, I forgot
+<header>    = \\d+ '.' \\d{0,3}    # {0,3} may not be accurate, I forgot
 <body>      = <line> '\n' | <body><body>
-<line>      = \d+ '.' \d{0,3} ' ' <rgb> ' ' <rgb> ' ' <rgb>
+<line>      = \\d+ '.' \\d{0,3} ' ' <rgb> ' ' <rgb> ' ' <rgb>
 <rgb>       = 0..255
 
 HEADER DESCRIPTION:
@@ -34,6 +34,7 @@ Each line of the body contains a timestamp in seconds, rounded to maximum 3 deci
 PAUSE = "pause"
 START = "start"
 UPLOAD = "upload"
+DONE = "done"
 OK = "ok"
 ERR = "er"
 
