@@ -12,6 +12,7 @@ from pesst_audio_to_color import audio_to_colors_with_timestamps
 # Current State: Used by Tick 
 QUEUE: list[Path] = []
 PLAYING: bool = True
+NEXT_SONG = False
 
 PREVIOUS_QUEUE = []
 PREVIOUS_PLAYING = True
@@ -33,6 +34,7 @@ async def queue_handler():
     """
     global QUEUE
     global PLAYING
+    global NEXT_SONG
     global PREVIOUS_QUEUE
     global PREVIOUS_PLAYING
     global MUSIC
@@ -43,14 +45,17 @@ async def queue_handler():
         SYN_COUNTDOWN = (SYN_COUNTDOWN + 1) % (SYN_INTERVAL*10) # Synchronize every 10 seconds
         if MUSIC and MUSIC.ended:
             QUEUE.pop(0)
+            NEXT_SONG = True
         
         if SYN_COUNTDOWN == 0 and MUSIC:
             await LIGHTS.start(await MUSIC.get_timestamp() or 0)
 
         pause: bool = not PLAYING and PREVIOUS_PLAYING
         unpause: bool = PLAYING and not PREVIOUS_PLAYING
-        next_song: bool = bool((not PREVIOUS_QUEUE and QUEUE) or (QUEUE and PREVIOUS_QUEUE[0] != QUEUE[0]))
+        next_song: bool = bool((not PREVIOUS_QUEUE and QUEUE) or (QUEUE and NEXT_SONG))
         no_songs: bool = bool(PREVIOUS_QUEUE and not QUEUE)
+
+        NEXT_SONG = False
 
         if pause and MUSIC:
             await MUSIC.pause()
@@ -95,16 +100,17 @@ def add_songs(songs: list[str]) -> list[str]:
 
     add_to_queue.extend(find_songs_by_name(names, downloaded_songs))
 
-    command = [
-        "yt-dlp",
-        "-P", SONG_DIRECTORY,
-        "--extract-audio",  # Optional: Extract only audio
-        "--audio-format", AUDIO_FORMAT,  # Optional: Convert to mp3 format
-        *urls
-    ]
 
     # Run the command
     if urls:
+        command = [
+            "yt-dlp",
+            "-P", SONG_DIRECTORY,
+            "--extract-audio",  # Optional: Extract only audio
+            "--audio-format", AUDIO_FORMAT,  # Optional: Convert to mp3 format
+            *urls
+        ]
+
         try:
             result = run(command, check=True, text=True, capture_output=True)
         except CalledProcessError as e:
@@ -195,10 +201,13 @@ def list_downloads() -> list[str]:
 
 def delete_songs(songs: list[str]) -> list[str]:
     global QUEUE
+    global NEXT_SONG
     try:
         song_indeces: list[int] = list(map(int, songs))
     except ValueError:
         return ["Not a list of integers"]
+    if 0 in song_indeces:
+        NEXT_SONG = True
     
     removed_songs = [str(song) for i, song in enumerate(QUEUE) if i in song_indeces]
     QUEUE = [song for i, song in enumerate(QUEUE) if i not in song_indeces]
