@@ -1,8 +1,8 @@
 from asyncio import run
 try:
-    import machine
-    import network
-    import neopixel
+    import machine # type: ignore
+    import network # type: ignore
+    import neopixel # type: ignore
     ON_PICO = True
     IP = "10.42.0.100"
     PORT = 8080

@@ -28,6 +28,10 @@ await asyncio.gather(cli(), queue_handler())
 doesn't
 
 ## Getting Started
+Invariant: 
+There is a queue of music to play. We have a CLI to add music (insert into queue) and a client to play music (remove from queue). 
+We do NOT need to synchronize! Python is not parallel, only concurrent and theres only 1 reader and 1 writer. Thus race conditions are not possible. 
+
 ### Requirements
 - mpv : brew install mpv
 - librosa : pip install librosa

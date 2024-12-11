@@ -1,6 +1,6 @@
 from pesst_audio_cli import cli
 from pesst_audio_core import setup, queue_handler
-from asyncio import gather, run, create_task, CancelledError
+from asyncio import run, create_task, CancelledError, wait
 
 async def main():
     await setup()
@@ -8,12 +8,11 @@ async def main():
     queue_handler_task = create_task(queue_handler())
 
     try:
-        await gather(cli_task, queue_handler_task)
+        await wait([cli_task])
+        queue_handler_task.cancel()
     except CancelledError:
         print("Tasks were cancelled.")
-        await cli_task
-        await queue_handler_task
-    print(cli_task.exception())
+        print(cli_task.exception())
 
 if __name__ == '__main__':
     run(main())
