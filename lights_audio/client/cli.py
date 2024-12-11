@@ -13,6 +13,7 @@ async def main():
     except CancelledError:
         print("Tasks were cancelled.")
         print(cli_task.exception())
+        print(queue_handler_task.exception())
 
 if __name__ == '__main__':
     run(main())

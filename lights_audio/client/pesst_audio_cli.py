@@ -19,9 +19,10 @@ f"""\
 Description: REPL to download and play music from youtube
 Overview: command [options...]
 Commands:
-add url... : Adds a song to the queue
+add song... : Adds a song to the queue by url or songname if downloaded
 skip : Skips a song
 list : Lists songs in the queue
+downloads : List downloaded songs
 delete id... : Deletes songs from the queue by id
 play : Plays queue
 pause : Pauses queue
@@ -75,6 +76,8 @@ async def cli():
                         pesst_audio_core.add_songs(args)
                 case "list":
                     output.extend(pesst_audio_core.list_queue())
+                case "downloads":
+                    output.extend(pesst_audio_core.list_downloads())
                 case "delete":
                     output.extend(pesst_audio_core.delete_songs(args))
                 case "skip":

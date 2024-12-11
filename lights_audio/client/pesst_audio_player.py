@@ -1,4 +1,5 @@
 import asyncio
+from config import log
 import os
 from typing import Optional
 import json
@@ -44,7 +45,7 @@ class MPVWrapper:
             await writer.wait_closed()
             return response.decode().strip()
         except Exception as e:
-            print(f"Failed to send command: {e}")
+            log(f"Failed to send command: {e}")
             return None
 
     async def _listen_for_events(self):
@@ -53,23 +54,23 @@ class MPVWrapper:
         while retries > 0:
             try:
                 reader, writer = await asyncio.open_unix_connection(self.socket_path)
-                print("Connected to audio socket")
+                log("Connected to audio socket")
                 while True:
                     line = await reader.readline()
                     if not line:
                         break
                     try:
                         event = json.loads(line.decode())
-                        print(event)
+                        log(event)
                         if event.get("event") == "end-file":
                             self.ended = True
                     except json.JSONDecodeError as e:
-                        print(f"Failed to decode event: {e}")
+                        log(f"Failed to decode event: {e}")
                 writer.close()
                 await writer.wait_closed()
                 break
             except (ConnectionRefusedError, FileNotFoundError) as e:
-                print(f"Failed to connect to socket: {e}. Retrying...")
+                log(f"Failed to connect to socket: {e}. Retrying...")
                 retries -= 1
                 await asyncio.sleep(0.5)
         else:
@@ -100,7 +101,7 @@ class MPVWrapper:
                 result = json.loads(response)
                 return result.get("data", None)  # Return the timestamp if available
             except json.JSONDecodeError as e:
-                print(f"Error decoding JSON response: {e}")
+                log(f"Error decoding JSON response: {e}")
         return None
 
 
