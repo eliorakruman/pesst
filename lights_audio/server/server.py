@@ -6,6 +6,7 @@ try:
     ON_PICO = True
     IP = "10.42.0.100"
     PORT = 8080
+    WLAN_USERNAME = "bob"
 except ImportError:
     ON_PICO = False
     IP = "127.0.0.1"
@@ -73,7 +74,7 @@ class AudioServer:
         wlan = network.WLAN(network.STA_IF)
         self.wlan = wlan
         wlan.active(True)
-        wlan.connect('bob')
+        wlan.connect(WLAN_USERNAME)
         while True:
             print('Waiting for connection...', wlan.status() )
             await sleep(1)
