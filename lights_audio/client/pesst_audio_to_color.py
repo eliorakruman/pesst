@@ -1,11 +1,11 @@
-from zipfile import Path
+from pathlib import Path
 import librosa
 import numpy as np
 import matplotlib.pyplot as plt
 
 def audio_to_colors_with_timestamps(file_path: Path):
     # Load the audio file
-    y, sr = librosa.load(file_path)  # Load the first 30 seconds for demo
+    y, sr = librosa.load(str(file_path))  # Load the first 30 seconds for demo
 
     # Extract audio features
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
@@ -23,7 +23,7 @@ def audio_to_colors_with_timestamps(file_path: Path):
             # Map RMS (loudness) to brightness
             brightness = min(1, rms[0, i] / max(rms[0]))  # Normalize to [0, 1]
             # Convert hue and brightness to RGB
-            color = plt.cm.hsv(hue / 360)[:3]  # HSV colormap, discard alpha
+            color = plt.cm.hsv(hue / 360)[:3]  # HSV colormap, discard alpha # type: ignore
             color = tuple(int(c * brightness * 255) for c in color)  # Scale to 0-255
 
             f.write(f"{round(float(time), 3)} {color[0]} {color[1]} {color[2]}\n")

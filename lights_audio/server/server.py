@@ -3,17 +3,20 @@ try:
     import machine
     import network
     import neopixel
+    ON_PICO = True
+    IP = "10.42.0.100"
+    PORT = 8080
 except ImportError:
-    machine = ...
-    ...
+    ON_PICO = False
+    IP = "127.0.0.1"
+    PORT = 8080
     
+DEBUG = True
 
 from protocol import DONE, PAUSE, START, UPLOAD, OK, ERR
 from asyncio import StreamReader, StreamWriter, start_server, gather, sleep
 
 # Prints timestamps and prints colors instead of using hardware lights
-DEBUG = True
-ON_PICO = False
 
 def log(s: str):
     if DEBUG:
@@ -41,7 +44,7 @@ SOUND: list[tuple[float, int, int, int]] = [(0, 255, 255, 255)]  # timestamp, r,
 DELAY = 0
 
 class AudioServer:
-    def __init__(self, host: str = "10.42.0.100", port: int = 8080, pin_number: int = 1, led_count: int = 60):
+    def __init__(self, host: str, port: int = 8080, pin_number: int = 1, led_count: int = 60):
         try:
             pin = machine.Pin(pin_number)
             self.led_count = led_count
@@ -176,4 +179,4 @@ class AudioServer:
         await writer.drain()
     
 if __name__ == '__main__':
-    run(AudioServer().run())
+    run(AudioServer(IP, PORT).run())

@@ -1,9 +1,8 @@
 import asyncio
 from os import system, name
 from sys import argv
-import sys
 from platform import system as system_ # type: ignore
-import client.pesst_audio_core as pesst_audio_core
+import pesst_audio_core as pesst_audio_core
 
 # Requirements
 # yt-dlp : https://github.com/yt-dlp/yt-dlp

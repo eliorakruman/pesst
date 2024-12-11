@@ -1,3 +1,4 @@
+from pathlib import Path
 from protocol import START, PAUSE, UPLOAD, OK, ERR, InvalidFormatError
 
 from asyncio import open_connection
@@ -27,7 +28,7 @@ class AudioClient:
         await self.writer.drain()
         return await self.is_ok()
     
-    async def upload(self, file_path: str) -> bool:
+    async def upload(self, file_path: Path) -> bool:
         with open(file_path, "rb") as f:
             self.writer.write(f"{UPLOAD} {len(f.readlines())}".encode())
         await self.writer.drain()

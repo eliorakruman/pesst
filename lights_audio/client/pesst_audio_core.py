@@ -3,13 +3,13 @@ from pathlib import Path
 from os.path import splitext # type: ignore
 from subprocess import run, CalledProcessError
 from typing import Optional
-from client.pesst_audio_player import MPVWrapper
-from client.pesst_audio_client import AudioClient
+from pesst_audio_player import MPVWrapper
+from pesst_audio_client import AudioClient
 from pesst_audio_to_color import audio_to_colors_with_timestamps
 
 SONG_DIRECTORY = "songs/"
 AUDIO_FORMAT = "mp3"
-EMPTY_FILE = "./client/empty_file"
+EMPTY_FILE = Path("./client/empty_file")
 
 SYN_INTERVAL = 10 # Seconds
 
