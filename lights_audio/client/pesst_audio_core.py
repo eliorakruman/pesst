@@ -170,7 +170,14 @@ def clean_downloaded(s: str, actual_extension: str) -> Path:
 
 
 def list_queue() -> list[str]:
-    return [f"{i}: {str(song)}" for i, song in enumerate(QUEUE)]
+    if not QUEUE:
+        return []
+    q = [f"{i}: {str(song)}" for i, song in enumerate(QUEUE)]
+    if PLAYING:
+        q[0] = q[0] + " (playing)"
+    else:
+        q[0] = q[0] + " (paused)"
+    return q
 
 def __list_downloads() -> list[tuple[str, Path]]:
     songs: list[tuple[str, Path]] = []

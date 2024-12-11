@@ -141,7 +141,6 @@ class AudioServer:
             if not self.paused:
                 time = gettime()
                 time_diff = gettimediff(time, self.last_time)
-                log("Timestamp: " + str(self.timestamp))
                 self.timestamp += time_diff
                 self.last_time = time
 
@@ -167,7 +166,7 @@ class AudioServer:
     def display_color(self, rgb_color: tuple[int, int, int]):
         print("display color")
         for i in range(self.led_count):
-            self.np[i] = rgb_color
+            self.np[i] = rgb_color # type: ignore
             self.np.write()
     
     
