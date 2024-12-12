@@ -2,6 +2,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import matplotlib.pyplot as plt
+from protocol import encode_line
 
 def audio_to_colors_with_timestamps(file_path: Path):
     # Load the audio file
@@ -14,8 +15,9 @@ def audio_to_colors_with_timestamps(file_path: Path):
 
     # Generate timestamps (in seconds)
     times = librosa.frames_to_time(np.arange(len(rms[0])), sr=sr)
+    prev_time = -1
 
-    with open(str(file_path) + ".color", "w") as f:
+    with open(str(file_path) + ".color", "wb") as f:
         # Generate colors based on features
         for i, time in enumerate(times):
             # Map chroma to hue
@@ -26,9 +28,13 @@ def audio_to_colors_with_timestamps(file_path: Path):
             color = plt.cm.hsv(hue / 360)[:3]  # HSV colormap, discard alpha # type: ignore
             color = tuple(int(c * brightness * 255) for c in color)  # Scale to 0-255
 
-            f.write(f"{round(float(time), 3)} {color[0]} {color[1]} {color[2]}\n")
+            timestamp = round(float(time), 1)
+            if timestamp != prev_time:
+                f.write(encode_line(timestamp, color[0], color[1], color[2]))
+                prev_time = timestamp
+
 
 # Example usage
 if __name__ == '__main__':
-    audio_file = Path("./songs/Playboi Carti - Evil Jordan⧸EVILJ0RDAN (Official Lyric Video) [Y_tXa6IT3i4].mp3")  # Replace with your audio file
+    audio_file = Path("./songs/DISCO LINES - BABY GIRL [Lxu_9m23qHg].mp3")  # Replace with your audio file
     audio_to_colors_with_timestamps(audio_file)

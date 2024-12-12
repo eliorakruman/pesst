@@ -1,4 +1,3 @@
-
 """
 Protocol:
 CLIENT: 
@@ -17,8 +16,7 @@ Light Data File format
 SYNTAX
 This is using Extended Backus Naur Form. All plain text is quoted with single quotes. A space does not mean theres actually a space unless its quoted!
 
-<FILE>      = <header> '\n' <body>
-<body>      = <line> '\n' | <body><body>
+<FILE>      = <line>*
 <line>      = \\d+ '.' \\d{0,3} ' ' <rgb> ' ' <rgb> ' ' <rgb>
 <rgb>       = 0..255
 
@@ -37,3 +35,24 @@ ERR = "er"
 
 class InvalidFormatError(RuntimeError):
     ...
+    
+def encode_line(timestamp: float, r: int, g: int, b: int):
+    timestamp = int(timestamp * 10)
+    return bytearray([*timestamp.to_bytes(2, "big"), r, g, b])
+
+def decode_file(p: str):
+    from pprint import pprint
+    t: dict[float, tuple[int, int, int]] = {}
+    with open(p, "rb") as f:
+        b: bytes = f.read()
+        r = 0
+        while r < len(b):
+            timestamp = int.from_bytes([b[r], b[r+1]], "big") / 10
+            t[timestamp] = (b[r+2], b[r+3], b[r+4])
+            r+=5
+    pprint(t)
+
+if __name__ == '__main__':
+    # b = encode_line(0.1, 0, 255, 255)
+    # print(b)
+    decode_file("./client/songs/DISCO LINES - BABY GIRL [Lxu_9m23qHg].mp3.color")

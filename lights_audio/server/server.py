@@ -24,7 +24,7 @@ def log(s: str):
         print(s)
 
 try:
-    from time import ticks_ms, ticks_diff
+    from time import ticks_ms, ticks_diff # type: ignore
 except ImportError:
     ticks_ms = None
     ticks_diff = None
@@ -41,11 +41,11 @@ def gettimediff(t1, t2):
         return ticks_diff(t1, t2) / 1000
     return (t1 - t2) / 1000
 
-SOUND: list[tuple[float, int, int, int]] = [(0, 255, 255, 255)]  # timestamp, r, g, b
+SOUND: bytearray = bytearray([0, 0, 255, 255, 255])  # timestamp, r, g, b
 DELAY = 0
 
 class AudioServer:
-    def __init__(self, host: str, port: int = 8080, pin_number: int = 1, led_count: int = 60):
+    def __init__(self, pin_number: int = 1, led_count: int = 60):
         try:
             pin = machine.Pin(pin_number)
             self.led_count = led_count
@@ -55,8 +55,6 @@ class AudioServer:
                 raise
         self.sound_index = 0
         self.prev_index = -1
-        self.host = host
-        self.port = port
         self.paused = False
         self.timestamp = 0
         self.last_time = gettime()
@@ -64,13 +62,16 @@ class AudioServer:
 
     async def run(self):
         if ON_PICO:
-            await self.wlan_connect()
+            ip = await self.wlan_connect()
+        else:
+            ip = "127.0.0.1"
+        print(ip)
         await gather(
-            start_server(self.listen, self.host, self.port),
+            start_server(self.listen, ip, PORT),
             self.update_lights()
             )
 
-    async def wlan_connect(self):
+    async def wlan_connect(self) -> str:
         wlan = network.WLAN(network.STA_IF)
         self.wlan = wlan
         wlan.active(True)
@@ -81,9 +82,10 @@ class AudioServer:
             if wlan.isconnected():
                 ip = wlan.ifconfig()[0]
                 print(f'Connected on {ip}')
-                return
+                return ip
     
     async def listen(self, reader: StreamReader, writer: StreamWriter):
+        global SOUND
         print("Listening...")
         while True:
             tokens = (await reader.read(1024)).decode().split()
@@ -111,22 +113,11 @@ class AudioServer:
                         await self.send_err(writer)
                         continue
                     self.reset(0)
-                    num_lines = int(tokens[1])
-                    SOUND.clear()
-                    SOUND.append((0, 255, 255, 255))
+                    num_bytes = int(tokens[1])
+                    SOUND = bytearray([0, 0, 255, 255, 255])
                     await self.send_ok(writer)
-                    error = False
-                    
-                    for _ in range(num_lines):
-                        tokens = (await reader.readline()).decode().split()
-                        if len(tokens) != 4:
-                            error = True
-                            break
-                        SOUND.append((float(tokens[0]), int(tokens[1]), int(tokens[2]), int(tokens[3])))
-                    if error:
-                        await self.send_err(writer)
-                    else:
-                        await self.send_ok(writer)
+                    SOUND.extend(await reader.readexactly(num_bytes))
+                    await self.send_ok(writer)
                 else:
                     await self.send_err(writer)
     
@@ -152,19 +143,23 @@ class AudioServer:
                 else:
                     self.display_color_dbg(color)
 
-            await sleep(0.01)
+            await sleep(0.05)
     
     def find_color_from_timestamp(self) -> tuple[int, int, int]:
-        while self.sound_index < len(SOUND)-1 and SOUND[self.sound_index][0] < self.timestamp:
-            self.sound_index += 1
-        _, r, g, b = SOUND[self.sound_index]
-        return (r, g, b)
+        while self.sound_index < len(SOUND)-5:
+            timestamp = int.from_bytes(SOUND[self.sound_index:self.sound_index+2], "big") / 10
+            if timestamp >= self.timestamp:
+                break
+            self.sound_index += 5
+        r = SOUND[self.sound_index+2]
+        g = SOUND[self.sound_index+3]
+        b = SOUND[self.sound_index+4]
+        return r, g, b
     
     def display_color_dbg(self, rgb_color: tuple[int, int, int]):
         print(f"T:{self.timestamp}: {{ .red={rgb_color[0]}, .green={rgb_color[1]}, .blue={rgb_color[2]} }}")
     
     def display_color(self, rgb_color: tuple[int, int, int]):
-        print("display color")
         for i in range(self.led_count):
             self.np[i] = rgb_color # type: ignore
             self.np.write()
@@ -179,4 +174,4 @@ class AudioServer:
         await writer.drain()
     
 if __name__ == '__main__':
-    run(AudioServer(IP, PORT).run())
+    run(AudioServer().run())

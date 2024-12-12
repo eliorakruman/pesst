@@ -30,17 +30,17 @@ class AudioClient:
     
     async def upload(self, file_path: Path) -> bool:
         with open(file_path, "rb") as f:
-            num_lines = len(f.readlines())
-            self.writer.write(f"{UPLOAD} {num_lines}".encode())
+            contents = f.read()
+        self.writer.write(f"{UPLOAD} {len(contents)}".encode())
         await self.writer.drain()
         # Give server time to delete previous file
         if not await self.is_ok():
             return False
-        if num_lines > 0:
-            with open(file_path, "rb") as f:
-                self.writer.writelines(f)
+        if len(contents) > 0:
+            self.writer.write(contents)
             await self.writer.drain()
-        return await self.is_ok()
+        ok = await self.is_ok()
+        return ok
     
     async def is_ok(self) -> bool:
         res = (await self.reader.readexactly(2)).decode()

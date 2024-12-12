@@ -228,6 +228,8 @@ def clear_queue():
 async def exit():
     if MUSIC:
         await MUSIC.stop()
+    if LIGHTS:
+        await LIGHTS.close()
 
 def uri_validator(x):
     try:

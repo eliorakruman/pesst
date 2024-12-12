@@ -1,9 +1,14 @@
+from os import mkdir
+from config import SONG_DIRECTORY
 from pesst_audio_cli import cli
 from pesst_audio_core import setup, queue_handler
 from asyncio import run, create_task, CancelledError, wait
 
 async def main():
     await setup()
+    try:
+        mkdir(SONG_DIRECTORY)
+    except: ...
     cli_task = create_task(cli())
     queue_handler_task = create_task(queue_handler())
 
