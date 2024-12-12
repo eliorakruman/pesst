@@ -40,7 +40,7 @@ def audio_to_colors_with_timestamps(file_path: Path, emotion: Literal["unknown",
             if timestamp - prev_time >= MIN_DIFF:
                 f.write(encode_line(timestamp, color[0], color[1], color[2]))
                 prev_time = timestamp
-        if times:
+        if times.any():
             f.write(encode_line(timestamp+0.1, 0, 0, 0)) # End with black
 
 def encode_line(timestamp: float, r: int, g: int, b: int):
@@ -64,7 +64,6 @@ def hype_color(loudness, chroma_strength) -> tuple[int, int, int]:
                 # Convert hue, saturation, and brightness to RGB
                 r, g, b = colorsys.hsv_to_rgb(normalized_hue, saturation, brightness)
                 color = (int(r * 255), int(g * 255), int(b * 255))  # Scale RGB to 0-255
-            print(color)
             return color
 # Example usage
 if __name__ == '__main__':
