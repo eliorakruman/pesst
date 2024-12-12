@@ -2,7 +2,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import matplotlib.pyplot as plt
-from protocol import encode_line
+from protocol import DECIMAL_PLACES, SIG_FIGS, MIN_DIFF
 
 def audio_to_colors_with_timestamps(file_path: Path):
     # Load the audio file
@@ -28,11 +28,14 @@ def audio_to_colors_with_timestamps(file_path: Path):
             color = plt.cm.hsv(hue / 360)[:3]  # HSV colormap, discard alpha # type: ignore
             color = tuple(int(c * brightness * 255) for c in color)  # Scale to 0-255
 
-            timestamp = round(float(time), 1)
-            if timestamp != prev_time:
+            timestamp = round(float(time), DECIMAL_PLACES)
+            if timestamp - prev_time >= MIN_DIFF:
                 f.write(encode_line(timestamp, color[0], color[1], color[2]))
                 prev_time = timestamp
 
+def encode_line(timestamp: float, r: int, g: int, b: int):
+    timestamp = int(timestamp * SIG_FIGS)
+    return bytearray([*timestamp.to_bytes(2, "big"), r, g, b])
 
 # Example usage
 if __name__ == '__main__':

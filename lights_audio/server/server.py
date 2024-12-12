@@ -14,7 +14,7 @@ except ImportError:
     
 DEBUG = True
 
-from protocol import DONE, PAUSE, START, UPLOAD, OK, ERR
+from protocol import DONE, MIN_DIFF, PAUSE, SIG_FIGS, START, UPLOAD, OK, ERR
 from asyncio import StreamReader, StreamWriter, start_server, gather, sleep
 
 # Prints timestamps and prints colors instead of using hardware lights
@@ -143,11 +143,11 @@ class AudioServer:
                 else:
                     self.display_color_dbg(color)
 
-            await sleep(0.05)
+            await sleep(MIN_DIFF/2)
     
     def find_color_from_timestamp(self) -> tuple[int, int, int]:
         while self.sound_index < len(SOUND)-5:
-            timestamp = int.from_bytes(SOUND[self.sound_index:self.sound_index+2], "big") / 10
+            timestamp = int.from_bytes(SOUND[self.sound_index:self.sound_index+2], "big") / SIG_FIGS
             if timestamp >= self.timestamp:
                 break
             self.sound_index += 5
