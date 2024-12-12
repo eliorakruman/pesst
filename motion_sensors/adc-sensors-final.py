@@ -23,7 +23,7 @@ tally = 0
 ticks_since = 0 # to record timing between front and back triggers
 diff = 0 # updates tally
 COOLDOWN_MULTIPLIER = 15
-MAX_CAPACITY = 5
+MAX_CAPACITY = 3
 
 # lcd setup
 i2c = I2C(1,scl=Pin(7), sda=Pin(6), freq=400000)
@@ -46,7 +46,7 @@ while not wlan.isconnected():
     print(f'Connected on {ip}')
     
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(("10.42.0.241", 1234))
+client.connect(("10.42.0.242", 1234))
 client.send("motion_sensor".encode())
 
 def convert_to_voltage(adc_value, v_ref=3.3):
@@ -85,7 +85,8 @@ try:
                 back_triggered = False
                 print("exit")
                 if hit_max:
-                    client.send("white".encode())
+                    if wlan.isconnected():
+                        client.send("white".encode())
                     hit_max = False
             else: # front only: mid-entry
                 front_triggered = True
@@ -99,18 +100,16 @@ try:
                 print("enter")
                 if tally + diff == MAX_CAPACITY:
                     hit_max = True
-                    client.send("blue".encode())
+                    if wlan.isconnected():
+                        client.send("blue".encode())
             else: # back only: mid exit
                 back_triggered = True
         
         if diff != 0:
             tally += diff
             diff = 0
-            if tally <= MAX_CAPACITY:
-                d.clear()
-                d.print(str(tally))
-            else:
-                print("")    
+            d.clear()
+            d.print(str(tally))   
         
         time.sleep(.5)
 
