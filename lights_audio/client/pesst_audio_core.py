@@ -123,7 +123,7 @@ def add_songs(songs: list[str]) -> list[str]:
 
     for path in add_to_queue:
         if not (SONG_DIRECTORY / Path(str(path)+".color")).exists():
-            audio_to_colors_with_timestamps(SONG_DIRECTORY / path)
+            audio_to_colors_with_timestamps(SONG_DIRECTORY / path, "unknown")
         else:
             log("Already generated song file")
     
