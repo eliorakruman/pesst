@@ -40,6 +40,8 @@ def audio_to_colors_with_timestamps(file_path: Path, emotion: Literal["unknown",
             if timestamp - prev_time >= MIN_DIFF:
                 f.write(encode_line(timestamp, color[0], color[1], color[2]))
                 prev_time = timestamp
+        if times:
+            f.write(encode_line(timestamp+0.1, 0, 0, 0)) # End with black
 
 def encode_line(timestamp: float, r: int, g: int, b: int):
     timestamp = int(timestamp * SIG_FIGS)
@@ -51,7 +53,7 @@ def hype_color(loudness, chroma_strength) -> tuple[int, int, int]:
                 color = (255, 255, 255)  # White for very high energy and chroma
             else:
                 # Adjust hue within a close range to red
-                hue = (10 + 20 * (1 - chroma_strength)) % 360  # Allows slight orange and deeper red variations
+                hue = (360 - 30 * (1 - chroma_strength)) % 360 
 
                 saturation = max(0.6, 1 - chroma_strength)
                 brightness = max(0.3, loudness)  # Ensure some visibility in low energy

@@ -42,7 +42,7 @@ def gettimediff(t1, t2):
     return (t1 - t2) / 1000
 
 SOUND: bytearray = bytearray([0, 0, 255, 255, 255])  # timestamp, r, g, b
-DELAY = 0
+DELAY = 0.2
 
 class AudioServer:
     def __init__(self, pin_number: int = 1, led_count: int = 60):
@@ -148,7 +148,7 @@ class AudioServer:
     def find_color_from_timestamp(self) -> tuple[int, int, int]:
         while self.sound_index < len(SOUND)-5:
             timestamp = int.from_bytes(SOUND[self.sound_index:self.sound_index+2], "big") / SIG_FIGS
-            if timestamp >= self.timestamp:
+            if timestamp >= self.timestamp + DELAY:
                 break
             self.sound_index += 5
         r = SOUND[self.sound_index+2]
