@@ -57,7 +57,7 @@ async def queue_handler():
     while True:
         await asyncio.sleep(0.1)
         SYN_COUNTDOWN = (SYN_COUNTDOWN + 1) % (SYN_INTERVAL*10) # Synchronize every 10 seconds
-        if MUSIC and MUSIC.ended and QUEUE[0] != AUTOPLAY:
+        if MUSIC and MUSIC.ended:
             QUEUE.pop(0)
             NEXT_SONG = True
         
@@ -101,6 +101,7 @@ async def play_next_song(path: Path):
         await MUSIC.stop()
     if path == AUTOPLAY:
         path = choice(__list_downloads())[1]
+        QUEUE.insert(0, path)
     await LIGHTS.upload(SONG_DIRECTORY / Path(str(path)+ COLOR_FILE_EXTENSION))
     MUSIC = MPVWrapper(SONG_DIRECTORY / path)
     await MUSIC.start()

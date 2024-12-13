@@ -20,7 +20,7 @@ download : Downloads a song
 downloads : List downloaded songs
 brightness <percent> : Sets brightness to percent
 brightness +|-<percent> : Increments or decrements brightness by percent
-autoplay : Auto queues songs from downloads
+autoplay : Auto queues songs from downloads. Must clear queue to exit autoplay. Skipping will proceed to the next random song
 delete id... : Deletes songs from the queue by id
 play : Plays queue
 pause : Pauses queue
