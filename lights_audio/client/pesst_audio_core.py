@@ -4,6 +4,7 @@ from re import Pattern, compile, Match
 from urllib.parse import urlparse
 from pathlib import Path
 from os.path import splitext # type: ignore
+from os import remove
 from subprocess import run, CalledProcessError
 from typing import Literal, Optional
 from config import AUDIO_FORMAT, COLOR_FILE_EXTENSION, EMPTY_FILE, LIGHTS_LOCAL_IP, LIGHTS_REMOTE_IP, LIGHTS_PORT, SONG_DIRECTORY, SYN_INTERVAL, log
@@ -139,6 +140,21 @@ def download(urls: list[str]) -> list[Path]:
     
     return out
 
+def uninstall(songs: list[str]) -> list[Path]:
+    indeces = [int(index) for index in songs if index.isdigit()]
+    names = [song for song in songs if not song.isdigit()]
+
+    downloaded_songs = __list_downloads()
+
+    songs_to_remove: set[Path] = set()
+    songs_to_remove.update(song_tuple[1] for i, song_tuple in enumerate(downloaded_songs) if i in indeces)
+    songs_to_remove.update(find_songs_by_name(names, downloaded_songs))
+
+    for song_to_remove in songs_to_remove:
+        remove(SONG_DIRECTORY / song_to_remove)
+        remove(SONG_DIRECTORY / Path(str(song_to_remove) + COLOR_FILE_EXTENSION))
+    return [song_to_remove for song_to_remove in songs_to_remove]
+
 pattern: Pattern = compile(r"([+-])?(\d|(?:\d\d)|100)")
 needs_1_arg = "Expected 1 brightness argument"
 not_a_percent = "Argument not of the form [+|-]0..100"
@@ -192,29 +208,15 @@ def find_songs_by_name(songs: list[str], downloads: list[tuple[str, Path]]) -> l
     return out
             
 def find_song_by_name(song: str, downloads: list[tuple[str, Path]]) -> Optional[Path]:
-    best: tuple[str, Path] = ("", Path())
-    seen_multiple = False
+    song = song.lower()
+    best: Optional[Path] = None
     for download in downloads:
-        similarity = longest_substring(download[0], song)
-        if similarity > len(best[0]):
-            seen_multiple = False
-            best = download
-        elif similarity == len(best[0]):
-            seen_multiple = True
-    if seen_multiple:
-        return None
-    return best[1]
-
-def longest_substring(s1: str, s2: str) -> int:
-    mx = 0
-    for i in range(len(s1)):
-        for j in range(len(s2)):
-            if j >= len(s1):
-                break
-            if s1[i+j] != s2[j]:
-                break
-            mx = max(mx, j)
-    return mx
+        if song in download[0].lower():
+            if best:
+                return None
+            best = download[1]
+    return best
+    
 
 def clean_already_downloaded(s: str) -> Path:
     # Input Format: [download] {SONG_DIRECTORY}/{SONG_NAME} has already been downloaded
@@ -287,3 +289,6 @@ def uri_validator(x):
         return all([result.scheme, result.netloc])
     except AttributeError:
         return False
+
+if __name__ == '__main__':
+    print(find_song_by_name("oversea", __list_downloads()))
