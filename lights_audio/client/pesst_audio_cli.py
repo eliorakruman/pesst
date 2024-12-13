@@ -15,7 +15,7 @@ Overview: command [options...]
 Commands:
 add song... : Adds a song to the queue by url or songname if downloaded
 skip : Skips a song
-list : Lists songs in the queue
+queue : Lists songs in the queue
 download : Downloads a song
 downloads : List downloaded songs
 brightness <percent> : Sets brightness to percent
@@ -67,7 +67,7 @@ async def cli():
                     output.append("add requires urls")
                 else:
                     pesst_audio_core.add_songs(args)
-            case "list":
+            case "queue":
                 output.extend(pesst_audio_core.list_queue())
             case "download":
                 output.extend(str(path) for path in pesst_audio_core.download(args))
@@ -76,7 +76,7 @@ async def cli():
             case "brightness":
                 output.extend(await pesst_audio_core.brightness(args))
             case "autoplay":
-                ...
+                pesst_audio_core.autoplay()
             case "delete":
                 try:
                     song_indeces: list[int] = list(map(int, args))

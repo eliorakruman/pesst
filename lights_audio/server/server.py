@@ -136,7 +136,7 @@ class AudioServer:
                 self.last_time = time
 
             color = self.find_color_from_timestamp()
-            color: tuple[int, int, int] = tuple(int(color[0]*self.brightness) for c in color) # type: ignore
+            color: tuple[int, int, int] = tuple(int(c*self.brightness) for c in color) # type: ignore
             if not self.paused and self.sound_index != 0 and self.sound_index != self.prev_index:
                 self.prev_index = self.sound_index
                 if ON_PICO:

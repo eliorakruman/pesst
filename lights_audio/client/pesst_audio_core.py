@@ -1,4 +1,5 @@
 import asyncio
+from random import choice
 from re import Pattern, compile, Match
 from urllib.parse import urlparse
 from pathlib import Path
@@ -11,6 +12,7 @@ from pesst_audio_player import MPVWrapper
 from pesst_light_client import LightClient
 from pesst_audio_to_color import audio_to_colors_with_timestamps
 
+AUTOPLAY = Path("Autoplay")
 # Current State: Used by Tick 
 QUEUE: list[Path] = []
 BRIGHTNESS = DEFAULT_BRIGHTNESS
@@ -97,6 +99,8 @@ async def play_next_song(path: Path):
     if MUSIC:
         # Upload the music file to LIGHTS
         await MUSIC.stop()
+    if path == AUTOPLAY:
+        path = choice(__list_downloads())[1]
     await LIGHTS.upload(SONG_DIRECTORY / Path(str(path)+ COLOR_FILE_EXTENSION))
     MUSIC = MPVWrapper(SONG_DIRECTORY / path)
     await MUSIC.start()
@@ -157,6 +161,10 @@ async def brightness(args: list[str]) -> list[str]:
     else:
         raise RuntimeError("How did we get here? Bad regular expression!")
     return [f"Brightness: {BRIGHTNESS}"]
+
+def autoplay():
+    global QUEUE
+    QUEUE.append(AUTOPLAY)
 
 def add_songs(songs: list[str]) -> list[str]:
     add_to_queue: list[Path] = []
