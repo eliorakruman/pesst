@@ -57,7 +57,7 @@ async def queue_handler():
     while True:
         await asyncio.sleep(0.1)
         SYN_COUNTDOWN = (SYN_COUNTDOWN + 1) % (SYN_INTERVAL*10) # Synchronize every 10 seconds
-        if MUSIC and MUSIC.ended:
+        if MUSIC and MUSIC.ended and QUEUE[0] != AUTOPLAY:
             QUEUE.pop(0)
             NEXT_SONG = True
         
