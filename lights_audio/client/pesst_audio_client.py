@@ -4,31 +4,42 @@ from protocol import START, PAUSE, UPLOAD, OK, ERR, InvalidFormatError
 from asyncio import open_connection
 
 class AudioClient:
-    def __init__(self, host: str, port: int):
+    def __init__(self, host: str, port: int, enabled: bool = True):
+        self.enabled = enabled
         self.host = host
         self.port = port
     
     async def connect(self):
+        if not self.enabled:
+            return
         reader, writer = await open_connection(self.host, self.port)
         self.reader = reader
         self.writer = writer
     
     async def close(self):
+        if not self.enabled:
+            return
         self.writer.close()
         await self.writer.wait_closed()
     
     async def start(self, seconds: float = 0) -> bool:
+        if not self.enabled:
+            return True
         self.writer.write(START.encode())
         self.writer.write(f" {round(seconds, 3)}".encode())
         await self.writer.drain()
         return await self.is_ok()
     
     async def pause(self) -> bool:
+        if not self.enabled:
+            return True
         self.writer.write(PAUSE.encode())
         await self.writer.drain()
         return await self.is_ok()
     
     async def upload(self, file_path: Path) -> bool:
+        if not self.enabled:
+            return True
         with open(file_path, "rb") as f:
             contents = f.read()
         self.writer.write(f"{UPLOAD} {len(contents)}".encode())

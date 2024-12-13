@@ -1,18 +1,12 @@
 import asyncio
 from os import system, name
 from sys import argv
-from platform import system as system_ # type: ignore
+from platform import system as system_
 import pesst_audio_core as pesst_audio_core
 
 # Requirements
 # yt-dlp : https://github.com/yt-dlp/yt-dlp
-# ffplay && ffmpeg
-
-INVOCATION_HELP_MESSAGE = \
-f"""\
-Usage: python {argv[0]}
-Opens up a repl\
-"""
+# mpv : https://mpv.io/
 
 REPL_HELP_MESSAGE = \
 f"""\
@@ -22,6 +16,7 @@ Commands:
 add song... : Adds a song to the queue by url or songname if downloaded
 skip : Skips a song
 list : Lists songs in the queue
+download : Downloads a song
 downloads : List downloaded songs
 delete id... : Deletes songs from the queue by id
 play : Plays queue
@@ -53,10 +48,6 @@ async def ainput(prompt: str) -> str:
         return ""
 
 async def cli():
-    if len(argv) > 1 and argv[1] in ["-help", "--help", "-h", "help"]:
-        print(INVOCATION_HELP_MESSAGE)
-        exit(0)
-
     print(REPL_INTRO_MESSAGE)
     while True:
         output: list[str] = []
@@ -76,12 +67,18 @@ async def cli():
                         pesst_audio_core.add_songs(args)
                 case "list":
                     output.extend(pesst_audio_core.list_queue())
+                case "download":
+                    output.extend(str(path) for path in pesst_audio_core.download(args))
                 case "downloads":
                     output.extend(pesst_audio_core.list_downloads())
                 case "delete":
-                    output.extend(pesst_audio_core.delete_songs(args))
+                    try:
+                        song_indeces: list[int] = list(map(int, args))
+                        output.extend(pesst_audio_core.delete_songs(song_indeces))
+                    except ValueError:
+                        output.extend(["Not a list of integers"])
                 case "skip":
-                    pesst_audio_core.delete_songs(["0"])
+                    pesst_audio_core.delete_songs([0])
                 case "play":
                     pesst_audio_core.play()
                 case "pause":

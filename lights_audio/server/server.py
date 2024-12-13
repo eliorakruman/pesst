@@ -3,15 +3,12 @@ try:
     import machine # type: ignore
     import network # type: ignore
     import neopixel # type: ignore
+    from env import SSID, PASSWORD # type: ignore
     ON_PICO = True
-    IP = "10.42.0.100"
-    PORT = 8080
-    WLAN_USERNAME = "bob"
 except ImportError:
     ON_PICO = False
-    IP = "127.0.0.1"
-    PORT = 8080
     
+PORT = 8080
 DEBUG = True
 
 from protocol import DONE, MIN_DIFF, PAUSE, SIG_FIGS, START, UPLOAD, OK, ERR
@@ -62,7 +59,7 @@ class AudioServer:
 
     async def run(self):
         if ON_PICO:
-            ip = await self.wlan_connect()
+            ip = await self.wlan_connect(SSID, PASSWORD)
         else:
             ip = "127.0.0.1"
         print(ip)
@@ -71,11 +68,11 @@ class AudioServer:
             self.update_lights()
             )
 
-    async def wlan_connect(self) -> str:
+    async def wlan_connect(self, ssid: str, password: str) -> str:
         wlan = network.WLAN(network.STA_IF)
         self.wlan = wlan
         wlan.active(True)
-        wlan.connect(WLAN_USERNAME)
+        wlan.connect(ssid, password)
         while True:
             print('Waiting for connection...', wlan.status() )
             await sleep(1)
@@ -91,35 +88,33 @@ class AudioServer:
             tokens = (await reader.read(1024)).decode().split()
             if not tokens:
                 return
-            print(tokens)
-            if tokens:
-                cmd = tokens[0]
-                log(cmd)
-                if cmd == DONE:
-                    writer.close()
-                    await writer.wait_closed()
-                    return
-                elif cmd == PAUSE:
-                    self.paused = True
-                    await self.send_ok(writer)
-                elif cmd == START:
-                    if len(tokens) != 2:
-                        await self.send_err(writer)
-                        continue
-                    self.reset(float(tokens[1]))
-                    await self.send_ok(writer)
-                elif cmd == UPLOAD:
-                    if len(tokens) != 2 or not tokens[1].isdigit():
-                        await self.send_err(writer)
-                        continue
-                    self.reset(0)
-                    num_bytes = int(tokens[1])
-                    SOUND = bytearray([0, 0, 255, 255, 255])
-                    await self.send_ok(writer)
-                    SOUND.extend(await reader.readexactly(num_bytes))
-                    await self.send_ok(writer)
-                else:
+            log(tokens)
+            cmd = tokens[0]
+            if cmd == DONE:
+                writer.close()
+                await writer.wait_closed()
+                return
+            elif cmd == PAUSE:
+                self.paused = True
+                await self.send_ok(writer)
+            elif cmd == START:
+                if len(tokens) != 2:
                     await self.send_err(writer)
+                    continue
+                self.reset(float(tokens[1]))
+                await self.send_ok(writer)
+            elif cmd == UPLOAD:
+                if len(tokens) != 2 or not tokens[1].isdigit():
+                    await self.send_err(writer)
+                    continue
+                self.reset(0)
+                num_bytes = int(tokens[1])
+                SOUND = bytearray([0, 0, 255, 255, 255])
+                await self.send_ok(writer)
+                SOUND.extend(await reader.readexactly(num_bytes))
+                await self.send_ok(writer)
+            else:
+                await self.send_err(writer)
     
     def reset(self, time: float):
         self.paused = False

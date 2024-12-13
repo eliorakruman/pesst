@@ -3,8 +3,8 @@ from urllib.parse import urlparse
 from pathlib import Path
 from os.path import splitext # type: ignore
 from subprocess import run, CalledProcessError
-from typing import Optional
-from config import AUDIO_FORMAT, EMPTY_FILE, LIGHTS_IP, LIGHTS_PORT, SONG_DIRECTORY, SYN_INTERVAL, log
+from typing import Literal, Optional
+from config import AUDIO_FORMAT, COLOR_FILE_EXTENSION, EMPTY_FILE, LIGHTS_LOCAL_IP, LIGHTS_REMOTE_IP, LIGHTS_PORT, SONG_DIRECTORY, SYN_INTERVAL, log
 from pesst_audio_player import MPVWrapper
 from pesst_audio_client import AudioClient
 from pesst_audio_to_color import audio_to_colors_with_timestamps
@@ -18,11 +18,16 @@ PREVIOUS_QUEUE = []
 PREVIOUS_PLAYING = True
 
 MUSIC: Optional[MPVWrapper] = None
-LIGHTS: AudioClient = AudioClient(LIGHTS_IP, LIGHTS_PORT)
+LIGHTS: AudioClient
 
 SYN_COUNTDOWN = 0
 
-async def setup():
+async def setup(lights: Literal["local", "remote", "none"] = "local"):
+    global LIGHTS
+    ip = LIGHTS_REMOTE_IP
+    if lights == "local":
+        ip = LIGHTS_LOCAL_IP
+    LIGHTS = AudioClient(ip, LIGHTS_PORT, lights != "none")
     await LIGHTS.connect() 
 
 async def queue_handler():
@@ -81,11 +86,42 @@ async def play_next_song(path: Path):
     if MUSIC:
         # Upload the music file to LIGHTS
         await MUSIC.stop()
-    await LIGHTS.upload(SONG_DIRECTORY / Path(str(path)+ ".color"))
+    await LIGHTS.upload(SONG_DIRECTORY / Path(str(path)+ COLOR_FILE_EXTENSION))
     MUSIC = MPVWrapper(SONG_DIRECTORY / path)
     await MUSIC.start()
     await asyncio.sleep(0.1)
         
+def download(urls: list[str]) -> list[Path]:
+    if not urls:
+        return []
+
+    command = [
+        "yt-dlp",
+        "-P", SONG_DIRECTORY,
+        "--extract-audio",  # Optional: Extract only audio
+        "--audio-format", AUDIO_FORMAT,  # Optional: Convert to mp3 format
+        *urls
+    ]
+
+    try:
+        result = run(command, check=True, text=True, capture_output=True)
+    except CalledProcessError as e:
+        log(f"Error occurred while downloading: {e}")
+        return []
+
+    # Parse the yt-dlp output
+    yt_dlp_output = result.stdout.splitlines() # type: ignore
+    out = []
+    out.extend([clean_downloaded(line, "."+AUDIO_FORMAT) for line in yt_dlp_output if line.startswith("[download] Destination")])
+    out.extend([clean_already_downloaded(line) for line in yt_dlp_output if "has already been downloaded" in line])
+
+    for path in out:
+        if not (SONG_DIRECTORY / Path(str(path)+COLOR_FILE_EXTENSION)).exists():
+            audio_to_colors_with_timestamps(SONG_DIRECTORY / path, "unknown")
+        else:
+            log("Already generated song file")
+    
+    return out
 
 def add_songs(songs: list[str]) -> list[str]:
     add_to_queue: list[Path] = []
@@ -97,36 +133,9 @@ def add_songs(songs: list[str]) -> list[str]:
     downloaded_songs = __list_downloads()
 
     add_to_queue.extend([song[1] for i, song in enumerate(downloaded_songs) if i in indeces])
-
     add_to_queue.extend(find_songs_by_name(names, downloaded_songs))
+    add_to_queue.extend(download(urls))
 
-
-    # Run the command
-    if urls:
-        command = [
-            "yt-dlp",
-            "-P", SONG_DIRECTORY,
-            "--extract-audio",  # Optional: Extract only audio
-            "--audio-format", AUDIO_FORMAT,  # Optional: Convert to mp3 format
-            *urls
-        ]
-
-        try:
-            result = run(command, check=True, text=True, capture_output=True)
-        except CalledProcessError as e:
-            return [f"Error occurred while downloading: {e}"]
-
-        # Parse the yt-dlp output
-        yt_dlp_output = result.stdout.splitlines() # type: ignore
-        add_to_queue.extend([clean_downloaded(line, "."+AUDIO_FORMAT) for line in yt_dlp_output if line.startswith("[download] Destination")])
-        add_to_queue.extend([clean_already_downloaded(line) for line in yt_dlp_output if "has already been downloaded" in line])
-
-    for path in add_to_queue:
-        if not (SONG_DIRECTORY / Path(str(path)+".color")).exists():
-            audio_to_colors_with_timestamps(SONG_DIRECTORY / path, "unknown")
-        else:
-            log("Already generated song file")
-    
     QUEUE.extend(add_to_queue)
     return [str(s) for s in add_to_queue]
     
@@ -190,7 +199,7 @@ def __list_downloads() -> list[tuple[str, Path]]:
     for maybe_song in Path(SONG_DIRECTORY).iterdir():
         if not maybe_song.is_file():
             continue
-        if str(maybe_song).endswith(".color"):
+        if str(maybe_song).endswith(COLOR_FILE_EXTENSION):
             continue
         song = maybe_song.name
         songs.append((song[0:song.find("[")], Path(maybe_song.name)))
@@ -199,18 +208,14 @@ def __list_downloads() -> list[tuple[str, Path]]:
 def list_downloads() -> list[str]:
     return [f"{i}: {song[0]}" for i, song in enumerate(__list_downloads())]
 
-def delete_songs(songs: list[str]) -> list[str]:
+def delete_songs(indeces: list[int]) -> list[str]:
     global QUEUE
     global NEXT_SONG
-    try:
-        song_indeces: list[int] = list(map(int, songs))
-    except ValueError:
-        return ["Not a list of integers"]
-    if 0 in song_indeces:
+    if 0 in indeces:
         NEXT_SONG = True
     
-    removed_songs = [str(song) for i, song in enumerate(QUEUE) if i in song_indeces]
-    QUEUE = [song for i, song in enumerate(QUEUE) if i not in song_indeces]
+    removed_songs = [str(song) for i, song in enumerate(QUEUE) if i in indeces]
+    QUEUE = [song for i, song in enumerate(QUEUE) if i not in indeces]
     return removed_songs
         
 
@@ -229,6 +234,7 @@ async def exit():
     if MUSIC:
         await MUSIC.stop()
     if LIGHTS:
+        await LIGHTS.pause()
         await LIGHTS.close()
 
 def uri_validator(x):

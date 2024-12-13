@@ -4,6 +4,7 @@ from pathlib import Path
 import librosa
 import numpy as np
 import matplotlib.pyplot as plt
+from config import COLOR_FILE_EXTENSION
 from protocol import DECIMAL_PLACES, SIG_FIGS, MIN_DIFF
 
 def audio_to_colors_with_timestamps(file_path: Path, emotion: Literal["unknown", "hype"]):
@@ -19,7 +20,7 @@ def audio_to_colors_with_timestamps(file_path: Path, emotion: Literal["unknown",
     times = librosa.frames_to_time(np.arange(len(rms[0])), sr=sr)
     prev_time = -1
 
-    with open(str(file_path) + ".color", "wb") as f:
+    with open(str(file_path) + COLOR_FILE_EXTENSION, "wb") as f:
         # Generate colors based on features
         for i, time in enumerate(times):
             # Map chroma to hue
@@ -67,5 +68,8 @@ def hype_color(loudness, chroma_strength) -> tuple[int, int, int]:
             return color
 # Example usage
 if __name__ == '__main__':
-    audio_file = Path("./songs/Ken Carson - overseas (Official Music Video) [80M6sAU9DY4].mp3")  # Replace with your audio file
+    audio_file = Path("./songs/2hollis - two bad (official audio) [pifB_lGexdM].mp3")  # Replace with your audio file
+    audio_to_colors_with_timestamps(audio_file, "hype")
+
+    audio_file = Path("./songs/Desiigner - Panda (Official Music Video) [E5ONTXHS2mM].mp3")  # Replace with your audio file
     audio_to_colors_with_timestamps(audio_file, "hype")
