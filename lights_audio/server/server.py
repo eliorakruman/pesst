@@ -1,4 +1,5 @@
-from asyncio import run
+from protocol import DONE, MIN_DIFF, PAUSE, SIG_FIGS, START, UPLOAD, OK, ERR, BRIGHTNESS, DEFAULT_BRIGHTNESS
+from asyncio import StreamReader, StreamWriter, start_server, gather, sleep, run
 try:
     import machine # type: ignore
     import network # type: ignore
@@ -8,13 +9,10 @@ try:
 except ImportError:
     ON_PICO = False
     
+
 PORT = 8080
-DEBUG = True
+DEBUG = True # Prints timestamps and prints colors instead of using hardware lights
 
-from protocol import DONE, MIN_DIFF, PAUSE, SIG_FIGS, START, UPLOAD, OK, ERR
-from asyncio import StreamReader, StreamWriter, start_server, gather, sleep
-
-# Prints timestamps and prints colors instead of using hardware lights
 
 def log(s: str):
     if DEBUG:
@@ -39,7 +37,7 @@ def gettimediff(t1, t2):
     return (t1 - t2) / 1000
 
 SOUND: bytearray = bytearray([0, 0, 255, 255, 255])  # timestamp, r, g, b
-DELAY = 0.2
+DELAY = 0.1
 
 class AudioServer:
     def __init__(self, pin_number: int = 1, led_count: int = 60):
@@ -56,6 +54,7 @@ class AudioServer:
         self.timestamp = 0
         self.last_time = gettime()
         self.wlan = None
+        self.brightness = DEFAULT_BRIGHTNESS / 100 # Brightness as a percent
 
     async def run(self):
         if ON_PICO:
@@ -103,6 +102,12 @@ class AudioServer:
                     continue
                 self.reset(float(tokens[1]))
                 await self.send_ok(writer)
+            elif cmd == BRIGHTNESS:
+                if len(tokens) != 2 or not tokens[1].isdigit():
+                    await self.send_err(writer)
+                    continue
+                self.brightness = int(tokens[1]) / 100
+                await self.send_ok(writer)
             elif cmd == UPLOAD:
                 if len(tokens) != 2 or not tokens[1].isdigit():
                     await self.send_err(writer)
@@ -131,6 +136,7 @@ class AudioServer:
                 self.last_time = time
 
             color = self.find_color_from_timestamp()
+            color: tuple[int, int, int] = tuple(int(color[0]*self.brightness) for c in color) # type: ignore
             if not self.paused and self.sound_index != 0 and self.sound_index != self.prev_index:
                 self.prev_index = self.sound_index
                 if ON_PICO:
@@ -152,7 +158,7 @@ class AudioServer:
         return r, g, b
     
     def display_color_dbg(self, rgb_color: tuple[int, int, int]):
-        print(f"T:{self.timestamp}: {{ .red={rgb_color[0]}, .green={rgb_color[1]}, .blue={rgb_color[2]} }}")
+        print(f"T:{self.timestamp:.2f}: B:{self.brightness}: {{ .red={rgb_color[0]:.2f}, .green={rgb_color[1]:.2f}, .blue={rgb_color[2]:.2f} }}")
     
     def display_color(self, rgb_color: tuple[int, int, int]):
         for i in range(self.led_count):

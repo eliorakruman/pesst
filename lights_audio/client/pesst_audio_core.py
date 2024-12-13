@@ -1,24 +1,28 @@
 import asyncio
+from re import Pattern, compile, Match
 from urllib.parse import urlparse
 from pathlib import Path
 from os.path import splitext # type: ignore
 from subprocess import run, CalledProcessError
 from typing import Literal, Optional
 from config import AUDIO_FORMAT, COLOR_FILE_EXTENSION, EMPTY_FILE, LIGHTS_LOCAL_IP, LIGHTS_REMOTE_IP, LIGHTS_PORT, SONG_DIRECTORY, SYN_INTERVAL, log
+from protocol import DEFAULT_BRIGHTNESS
 from pesst_audio_player import MPVWrapper
-from pesst_audio_client import AudioClient
+from pesst_light_client import LightClient
 from pesst_audio_to_color import audio_to_colors_with_timestamps
 
 # Current State: Used by Tick 
 QUEUE: list[Path] = []
+BRIGHTNESS = DEFAULT_BRIGHTNESS
 PLAYING: bool = True
 NEXT_SONG = False
 
 PREVIOUS_QUEUE = []
 PREVIOUS_PLAYING = True
+PREVIOUS_BRIGHTNESS = DEFAULT_BRIGHTNESS
 
 MUSIC: Optional[MPVWrapper] = None
-LIGHTS: AudioClient
+LIGHTS: LightClient
 
 SYN_COUNTDOWN = 0
 
@@ -27,7 +31,7 @@ async def setup(lights: Literal["local", "remote", "none"] = "local"):
     ip = LIGHTS_REMOTE_IP
     if lights == "local":
         ip = LIGHTS_LOCAL_IP
-    LIGHTS = AudioClient(ip, LIGHTS_PORT, lights != "none")
+    LIGHTS = LightClient(ip, LIGHTS_PORT, lights != "none")
     await LIGHTS.connect() 
 
 async def queue_handler():
@@ -45,6 +49,9 @@ async def queue_handler():
     global MUSIC
     global LIGHTS
     global SYN_COUNTDOWN
+    global BRIGHTNESS
+    global PREVIOUS_BRIGHTNESS
+
     while True:
         await asyncio.sleep(0.1)
         SYN_COUNTDOWN = (SYN_COUNTDOWN + 1) % (SYN_INTERVAL*10) # Synchronize every 10 seconds
@@ -59,6 +66,7 @@ async def queue_handler():
         unpause: bool = PLAYING and not PREVIOUS_PLAYING
         next_song: bool = bool((not PREVIOUS_QUEUE and QUEUE) or (QUEUE and NEXT_SONG))
         no_songs: bool = bool(PREVIOUS_QUEUE and not QUEUE)
+        brightness_changed: bool = BRIGHTNESS != PREVIOUS_BRIGHTNESS
 
         NEXT_SONG = False
 
@@ -74,10 +82,13 @@ async def queue_handler():
             await MUSIC.stop()
             await LIGHTS.upload(EMPTY_FILE)
             MUSIC = None
+        elif brightness_changed:
+            await LIGHTS.set_brightness(BRIGHTNESS)
         
         PREVIOUS_QUEUE = QUEUE
         PREVIOUS_PLAYING = PLAYING
         QUEUE = QUEUE.copy()
+        PREVIOUS_BRIGHTNESS = BRIGHTNESS
 
 async def play_next_song(path: Path):
     global MUSIC
@@ -122,6 +133,30 @@ def download(urls: list[str]) -> list[Path]:
             log("Already generated song file")
     
     return out
+
+pattern: Pattern = compile(r"([+-])?(\d|(?:\d\d)|100)")
+needs_1_arg = "Expected 1 brightness argument"
+not_a_percent = "Argument not of the form [+|-]0..100"
+async def brightness(args: list[str]) -> list[str]:
+    global BRIGHTNESS
+    if len(args) == 0:
+        return [f"Brightness: {BRIGHTNESS}"]
+    if len(args) != 1:
+        return [needs_1_arg]
+    maybe_match: Optional[Match[str]] = pattern.fullmatch(args[0])
+    if maybe_match is None:
+        return [not_a_percent]
+    sign = maybe_match.group(1)
+    percent = int(maybe_match.group(2))
+    if sign == None:
+        BRIGHTNESS = percent
+    elif sign == "+":
+        BRIGHTNESS = min(BRIGHTNESS+percent, 100)
+    elif sign == "-":
+        BRIGHTNESS = max(BRIGHTNESS-percent, 0)
+    else:
+        raise RuntimeError("How did we get here? Bad regular expression!")
+    return [f"Brightness: {BRIGHTNESS}"]
 
 def add_songs(songs: list[str]) -> list[str]:
     add_to_queue: list[Path] = []

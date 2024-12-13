@@ -18,6 +18,9 @@ skip : Skips a song
 list : Lists songs in the queue
 download : Downloads a song
 downloads : List downloaded songs
+brightness <percent> : Sets brightness to percent
+brightness +|-<percent> : Increments or decrements brightness by percent
+autoplay : Auto queues songs from downloads
 delete id... : Deletes songs from the queue by id
 play : Plays queue
 pause : Pauses queue
@@ -51,55 +54,55 @@ async def cli():
     print(REPL_INTRO_MESSAGE)
     while True:
         output: list[str] = []
-        try:
-            tokens: list[str] = (await ainput(">>> ")).split()
-            if not tokens:
-                continue
+        tokens: list[str] = (await ainput(">>> ")).split()
+        if not tokens:
+            continue
 
-            command = tokens[0]
-            args = tokens[1:]
+        command = tokens[0]
+        args = tokens[1:]
 
-            match command:
-                case "add":
-                    if len(args) == 0:
-                        output.append("add requires urls")
-                    else:
-                        pesst_audio_core.add_songs(args)
-                case "list":
-                    output.extend(pesst_audio_core.list_queue())
-                case "download":
-                    output.extend(str(path) for path in pesst_audio_core.download(args))
-                case "downloads":
-                    output.extend(pesst_audio_core.list_downloads())
-                case "delete":
-                    try:
-                        song_indeces: list[int] = list(map(int, args))
-                        output.extend(pesst_audio_core.delete_songs(song_indeces))
-                    except ValueError:
-                        output.extend(["Not a list of integers"])
-                case "skip":
-                    pesst_audio_core.delete_songs([0])
-                case "play":
-                    pesst_audio_core.play()
-                case "pause":
-                    pesst_audio_core.pause()
-                case "clear":
-                    pesst_audio_core.clear_queue()
-                case "exit":
-                    await pesst_audio_core.exit()
-                    return
-                case "cls":
-                    system('cls' if name == 'nt' else 'clear')
-                case "help":
-                    output.append(REPL_HELP_MESSAGE)
-                case "credits":
-                    output.append(CREDITS)
-                case _:
-                    output.append("Unrecognized command")
+        match command:
+            case "add":
+                if len(args) == 0:
+                    output.append("add requires urls")
+                else:
+                    pesst_audio_core.add_songs(args)
+            case "list":
+                output.extend(pesst_audio_core.list_queue())
+            case "download":
+                output.extend(str(path) for path in pesst_audio_core.download(args))
+            case "downloads":
+                output.extend(pesst_audio_core.list_downloads())
+            case "brightness":
+                output.extend(await pesst_audio_core.brightness(args))
+            case "autoplay":
+                ...
+            case "delete":
+                try:
+                    song_indeces: list[int] = list(map(int, args))
+                    output.extend(pesst_audio_core.delete_songs(song_indeces))
+                except ValueError:
+                    output.extend(["Not a list of integers"])
+            case "skip":
+                pesst_audio_core.delete_songs([0])
+            case "play":
+                pesst_audio_core.play()
+            case "pause":
+                pesst_audio_core.pause()
+            case "clear":
+                pesst_audio_core.clear_queue()
+            case "exit":
+                await pesst_audio_core.exit()
+                return
+            case "cls":
+                system('cls' if name == 'nt' else 'clear')
+            case "help":
+                output.append(REPL_HELP_MESSAGE)
+            case "credits":
+                output.append(CREDITS)
+            case _:
+                output.append("Unrecognized command")
             
-        except KeyboardInterrupt:
-            output.append("Keyboard Interrupt")
-
         if output:
             print("\n".join(output))
 
