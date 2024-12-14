@@ -10,48 +10,11 @@ many people are in the event at one time. The system will be designed in stages.
 basic security features with facial recognition, the alarm, and the tallying device. The second stage will involve
 advanced light features and an audio system.
 
-## Lights and Audio
-This was made very last minute, so there are some quirks:
-- After queuing a song, press enter to show the prompt again
-- Exiting doesn't stop the program since the MUSIC and SONG player task is still running
-- I have no clue why     
-
-``` python
-cli_task = asyncio.create_task(cli())
-queue_handler_task = asyncio.create_task(queue_handler()) 
-await asyncio.gather(cli_task, queue_handler_task)
-```
-works but 
-``` python
-await asyncio.gather(cli(), queue_handler())
-```
-doesn't
-
-## Getting Started
-Invariant: 
-There is a queue of music to play. We have a CLI to add music (insert into queue) and a client to play music (remove from queue). 
-We do NOT need to synchronize! Python is not parallel, only concurrent and theres only 1 reader and 1 writer. Thus race conditions are not possible. 
-
-### Requirements
+## Requirements
 - mpv : brew install mpv
 - librosa : pip install librosa
 - matplotlib : pip install matplotlib
-- yt-dlp : pip install pt-dlp
+- yt-dlp : pip install yt-dlp
 
 These must be on your PATH
-
-If you are running the server on the Pico, set :
-pesst_audio_server's ON_PICO variable to true. This will attempt to connect the Pico to WAN. 
-pesst_audio_core LIGHTS: AudioClient = AudioClient("127.0.0.1", 8080) IP Address
-
-NOTE: THIS IS NOT WORKING RIGHT NOW PLEASE EFREN HELP WITH THE CONNECTING THE SERVER AND CLIENT ISSUE ON PICO
-### Running: 
-You MUST be in the lights_audio directory to run these!
-Server first: 
-`python3.12 server_main.py`
-
-Then client + cli:
-`python3.12 cli_main.py`
-
-Type help for help, type `add <youtube url...>` to add a song or playlist to the queue.
 
