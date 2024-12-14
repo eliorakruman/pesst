@@ -68,9 +68,9 @@ async def cli():
         match command:
             case "add":
                 if len(args) == 0:
-                    output.append("add requires urls")
+                    output.append("add requires songs/urls")
                 else:
-                    pesst_audio_core.add_songs(args)
+                    output.extend(pesst_audio_core.add_songs(args) or ["None found"])
             case "queue":
                 output.extend(pesst_audio_core.list_queue())
             case "search":
