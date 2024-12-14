@@ -1,1 +1,3 @@
 protocol.py
+client_secret*.json
+.youtubeapiv3client_credentials

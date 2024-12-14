@@ -16,8 +16,9 @@ Commands:
 add song... : Adds a song to the queue by url or songname if downloaded
 skip : Skips a song
 queue : Lists songs in the queue
+search song : Searches for a song on youtube. Download it via download index/name
 download url... : Downloads songs by url. Supports youtube and soundcloud
-uninstall song... : Uninstall songs
+uninstall song : Uninstall a song by index or name
 downloads : List downloaded songs
 brightness <percent> : Sets brightness to percent
 brightness +|-<percent> : Increments or decrements brightness by percent
@@ -70,10 +71,12 @@ async def cli():
                     pesst_audio_core.add_songs(args)
             case "queue":
                 output.extend(pesst_audio_core.list_queue())
+            case "search":
+                output.extend(pesst_audio_core.search(" ".join(args)))
             case "download":
                 output.extend(str(path) for path in pesst_audio_core.download(args))
             case "uninstall":
-                output.extend(str(path) for path in pesst_audio_core.uninstall(args))
+                output.extend(str(path) for path in pesst_audio_core.uninstall([" ".join(args)]))
             case "downloads":
                 output.extend(pesst_audio_core.list_downloads())
             case "brightness":

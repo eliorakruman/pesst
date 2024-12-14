@@ -10,6 +10,7 @@ SONG_DIRECTORY = "songs/"
 AUDIO_FORMAT = "mp3"
 EMPTY_FILE = Path("./empty_file")
 COLOR_FILE_EXTENSION = ".color"
+YOUTUBE_SECRETS_FILE = Path("./client_secret_251006524266-bp7ejcoqlqk03ml9o789cn84sl90nk3k.apps.googleusercontent.com.json")
 
 def log(s: str):
     if DEBUG:

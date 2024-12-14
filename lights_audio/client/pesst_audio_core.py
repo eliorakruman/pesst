@@ -6,14 +6,16 @@ from pathlib import Path
 from os.path import splitext # type: ignore
 from os import remove
 from subprocess import run, CalledProcessError
-from typing import Literal, Optional
-from config import AUDIO_FORMAT, COLOR_FILE_EXTENSION, EMPTY_FILE, LIGHTS_LOCAL_IP, LIGHTS_REMOTE_IP, LIGHTS_PORT, SONG_DIRECTORY, SYN_INTERVAL, log
+from typing import Iterable, Literal, Optional
+from config import AUDIO_FORMAT, COLOR_FILE_EXTENSION, EMPTY_FILE, LIGHTS_LOCAL_IP, LIGHTS_REMOTE_IP, LIGHTS_PORT, SONG_DIRECTORY, SYN_INTERVAL, YOUTUBE_SECRETS_FILE, log
 from protocol import DEFAULT_BRIGHTNESS
 from pesst_audio_player import MPVWrapper
 from pesst_light_client import LightClient
 from pesst_audio_to_color import audio_to_colors_with_timestamps
+from pesst_youtube_client import YoutubeAPIV3Client, Song
 
 AUTOPLAY = Path("Autoplay")
+YOUTUBE_CLIENT = YoutubeAPIV3Client(YOUTUBE_SECRETS_FILE, False)
 # Current State: Used by Tick 
 QUEUE: list[Path] = []
 BRIGHTNESS = DEFAULT_BRIGHTNESS
@@ -35,6 +37,7 @@ async def setup(lights: Literal["local", "remote", "none"] = "local"):
     if lights == "local":
         ip = LIGHTS_LOCAL_IP
     LIGHTS = LightClient(ip, LIGHTS_PORT, lights != "none")
+    YOUTUBE_CLIENT.initalize_session()
     await LIGHTS.connect() 
 
 async def queue_handler():
@@ -107,8 +110,28 @@ async def play_next_song(path: Path):
     MUSIC = MPVWrapper(SONG_DIRECTORY / path)
     await MUSIC.start()
     await asyncio.sleep(0.1)
+
+LAST_SEARCH: list[tuple[str, str]] = [] # song_name, song_url
+def search(song_name: str) -> list[str]:
+    global LAST_SEARCH
+    results = YOUTUBE_CLIENT.search_for_song(song_name)
+    LAST_SEARCH = [(f"{result.title}: {result.channel_title}", result.get_url()) for result in results]
+    return [f"{i}: {r[0]}" for i, r in enumerate(LAST_SEARCH)]
         
-def download(urls: list[str]) -> list[Path]:
+        
+def download(songs: Iterable[str]) -> list[Path]:
+    urls_to_download: set[str] = set()
+    urls = [url for url in songs if uri_validator(url)]
+    indeces = [int(index) for index in songs if index.isdigit()]
+    names = [name for name in songs if not uri_validator(name) and not name.isdigit()]
+
+    urls_to_download.update(urls)
+    urls_to_download.update(url for url in find_songs_by_name(names, LAST_SEARCH))
+    urls_to_download.update(result[1] for i, result in enumerate(LAST_SEARCH) if i in indeces)
+
+    return __download(urls_to_download)
+
+def __download(urls: Iterable[str]) -> list[Path]:
     if not urls:
         return []
 
@@ -199,17 +222,17 @@ def add_songs(songs: list[str]) -> list[str]:
     QUEUE.extend(add_to_queue)
     return [str(s) for s in add_to_queue]
     
-def find_songs_by_name(songs: list[str], downloads: list[tuple[str, Path]]) -> list[Path]:
-    out: list[Path] = []
+def find_songs_by_name[T](songs: list[str], downloads: list[tuple[str, T]]) -> list[T]:
+    out: list[T] = []
     for song in songs:
         best_fit = find_song_by_name(song, downloads)
         if best_fit:
             out.append(best_fit)
     return out
             
-def find_song_by_name(song: str, downloads: list[tuple[str, Path]]) -> Optional[Path]:
+def find_song_by_name[T](song: str, downloads: list[tuple[str, T]]) -> Optional[T]:
     song = song.lower()
-    best: Optional[Path] = None
+    best: Optional[T] = None
     for download in downloads:
         if song in download[0].lower():
             if best:
@@ -281,6 +304,7 @@ async def exit():
         await MUSIC.stop()
     if LIGHTS:
         await LIGHTS.pause()
+        await LIGHTS.set_brightness(0)
         await LIGHTS.close()
 
 def uri_validator(x):
