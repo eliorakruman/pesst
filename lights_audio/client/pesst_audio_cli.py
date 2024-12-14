@@ -2,6 +2,7 @@ import asyncio
 from os import system, name
 from sys import argv
 from platform import system as system_
+from shlex import split
 import pesst_audio_core as pesst_audio_core
 
 # Requirements
@@ -56,7 +57,8 @@ async def cli():
     print(REPL_INTRO_MESSAGE)
     while True:
         output: list[str] = []
-        tokens: list[str] = (await ainput(">>> ")).split()
+        input_ = await ainput(">>> ")
+        tokens: list[str] = list(map(str.strip, split(input_)))
         if not tokens:
             continue
 
@@ -72,11 +74,14 @@ async def cli():
             case "queue":
                 output.extend(pesst_audio_core.list_queue())
             case "search":
-                output.extend(pesst_audio_core.search(" ".join(args)))
+                if len(args) != 1:
+                    output.append("Search accepts only 1 argument")
+                else:
+                    output.extend(pesst_audio_core.search(args[0]))
             case "download":
                 output.extend(str(path) for path in pesst_audio_core.download(args))
             case "uninstall":
-                output.extend(str(path) for path in pesst_audio_core.uninstall([" ".join(args)]))
+                output.extend(str(path) for path in pesst_audio_core.uninstall(args))
             case "downloads":
                 output.extend(pesst_audio_core.list_downloads())
             case "brightness":
@@ -111,5 +116,3 @@ async def cli():
             
         if output:
             print("\n".join(output))
-
-        
