@@ -37,8 +37,9 @@ async def setup(lights: Literal["local", "remote", "none"] = "local"):
     if lights == "local":
         ip = LIGHTS_LOCAL_IP
     LIGHTS = LightClient(ip, LIGHTS_PORT, lights != "none")
-    YOUTUBE_CLIENT.initalize_session()
     await LIGHTS.connect() 
+    await LIGHTS.set_brightness(DEFAULT_BRIGHTNESS)
+    YOUTUBE_CLIENT.initalize_session()
 
 async def queue_handler():
     """
@@ -303,8 +304,8 @@ async def exit():
     if MUSIC:
         await MUSIC.stop()
     if LIGHTS:
-        await LIGHTS.pause()
         await LIGHTS.set_brightness(0)
+        await LIGHTS.pause()
         await LIGHTS.close()
 
 def uri_validator(x):

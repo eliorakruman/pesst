@@ -40,7 +40,7 @@ ERR = "er"
 MIN_DIFF = 0.05 # Min difference between color time steps
 SIG_FIGS = 100 # How much to multiply by to make above 1
 DECIMAL_PLACES = 2
-DEFAULT_BRIGHTNESS = 80
+DEFAULT_BRIGHTNESS = 40
 
 class InvalidFormatError(RuntimeError):
     ...

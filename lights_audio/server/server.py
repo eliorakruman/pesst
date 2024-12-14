@@ -36,7 +36,7 @@ def gettimediff(t1, t2):
         return ticks_diff(t1, t2) / 1000
     return (t1 - t2) / 1000
 
-SOUND: bytearray = bytearray([0, 0, 255, 255, 255])  # timestamp, r, g, b
+SOUND: bytearray = bytearray([0, 0, 100, 100, 100])  # timestamp, r, g, b
 DELAY = 0.1
 
 class AudioServer:
@@ -55,6 +55,7 @@ class AudioServer:
         self.last_time = gettime()
         self.wlan = None
         self.brightness = DEFAULT_BRIGHTNESS / 100 # Brightness as a percent
+        self.last_brightness = -1
 
     async def run(self):
         if ON_PICO:
@@ -114,7 +115,7 @@ class AudioServer:
                     continue
                 self.reset(0)
                 num_bytes = int(tokens[1])
-                SOUND = bytearray([0, 0, 255, 255, 255])
+                SOUND = bytearray([0, 0, 100, 100, 100])
                 await self.send_ok(writer)
                 SOUND.extend(await reader.readexactly(num_bytes))
                 await self.send_ok(writer)
@@ -137,12 +138,13 @@ class AudioServer:
 
             color = self.find_color_from_timestamp()
             color: tuple[int, int, int] = tuple(int(c*self.brightness) for c in color) # type: ignore
-            if not self.paused and self.sound_index != 0 and self.sound_index != self.prev_index:
+            if not self.paused and self.sound_index != 0 and self.sound_index != self.prev_index or self.last_brightness != self.brightness:
                 self.prev_index = self.sound_index
                 if ON_PICO:
                     self.display_color(color)
                 else:
                     self.display_color_dbg(color)
+                self.last_brightness = self.brightness
 
             await sleep(MIN_DIFF/2)
     
