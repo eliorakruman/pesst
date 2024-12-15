@@ -1,25 +1,29 @@
+import asyncio
 from os import system, name
 from sys import argv
 from platform import system as system_
+from shlex import split
 import pesst_audio_core as pesst_audio_core
 
 # Requirements
 # yt-dlp : https://github.com/yt-dlp/yt-dlp
-# ffplay && ffmpeg
-
-INVOCATION_HELP_MESSAGE = \
-f"""\
-Usage: python {argv[0]}
-Opens up a repl\
-"""
+# mpv : https://mpv.io/
 
 REPL_HELP_MESSAGE = \
 f"""\
 Description: REPL to download and play music from youtube
 Overview: command [options...]
 Commands:
-add url... : Adds a song to the queue
-list : Lists songs in the queue
+add song... : Adds a song to the queue by url or songname if downloaded
+skip : Skips a song
+queue : Lists songs in the queue
+search song : Searches for a song on youtube. Download it via download index/name
+download url... : Downloads songs by url. Supports youtube and soundcloud
+uninstall song : Uninstall a song by index or name
+downloads : List downloaded songs
+brightness <percent> : Sets brightness to percent
+brightness +|-<percent> : Increments or decrements brightness by percent
+autoplay : Auto queues songs from downloads. Must clear queue to exit autoplay. Skipping will proceed to the next random song
 delete id... : Deletes songs from the queue by id
 play : Plays queue
 pause : Pauses queue
@@ -42,16 +46,19 @@ f"""\
 Thanks to Archer, Daniel, Efren, Eliora, Nathan, and Paras for being wonderful teammates.\
 """
 
-if len(argv) > 1 and argv[1] in ["-help", "--help", "-h", "help"]:
-    print(INVOCATION_HELP_MESSAGE)
-    exit(0)
-
-print(REPL_INTRO_MESSAGE)
-queue = []
-while True:
-    output: list[str] = []
+async def ainput(prompt: str) -> str:
+    """Asynchronous version of input() using a thread executor."""
     try:
-        tokens: list[str] = input(">>> ").split()
+        return await asyncio.get_running_loop().run_in_executor(None, input, prompt)
+    except:
+        return ""
+
+async def cli():
+    print(REPL_INTRO_MESSAGE)
+    while True:
+        output: list[str] = []
+        input_ = await ainput(">>> ")
+        tokens: list[str] = list(map(str.strip, split(input_)))
         if not tokens:
             continue
 
@@ -61,14 +68,34 @@ while True:
         match command:
             case "add":
                 if len(args) == 0:
-                    output.append("add requires urls")
+                    output.append("add requires songs/urls")
                 else:
-                    pesst_audio_core.add_songs(args)
-            case "list":
+                    output.extend(pesst_audio_core.add_songs(args) or ["None found"])
+            case "queue":
                 output.extend(pesst_audio_core.list_queue())
+            case "search":
+                if len(args) != 1:
+                    output.append("Search accepts only 1 argument")
+                else:
+                    output.extend(pesst_audio_core.search(args[0]))
+            case "download":
+                output.extend(str(path) for path in pesst_audio_core.download(args))
+            case "uninstall":
+                output.extend(str(path) for path in pesst_audio_core.uninstall(args))
+            case "downloads":
+                output.extend(pesst_audio_core.list_downloads())
+            case "brightness":
+                output.extend(await pesst_audio_core.brightness(args))
+            case "autoplay":
+                pesst_audio_core.autoplay()
             case "delete":
-                output.append("Removed:")
-                output.extend(pesst_audio_core.delete_songs())
+                try:
+                    song_indeces: list[int] = list(map(int, args))
+                    output.extend(pesst_audio_core.delete_songs(song_indeces))
+                except ValueError:
+                    output.extend(["Not a list of integers"])
+            case "skip":
+                pesst_audio_core.delete_songs([0])
             case "play":
                 pesst_audio_core.play()
             case "pause":
@@ -76,7 +103,8 @@ while True:
             case "clear":
                 pesst_audio_core.clear_queue()
             case "exit":
-                exit(0)
+                await pesst_audio_core.exit()
+                return
             case "cls":
                 system('cls' if name == 'nt' else 'clear')
             case "help":
@@ -85,13 +113,6 @@ while True:
                 output.append(CREDITS)
             case _:
                 output.append("Unrecognized command")
-        
-    except KeyboardInterrupt:
-        output.append("Keyboard Interrupt")
-
-    if output:
-        print("\n".join(output))
-    
-    pesst_audio_core.tick()
             
-    
+        if output:
+            print("\n".join(output))

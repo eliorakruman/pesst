@@ -10,9 +10,11 @@ many people are in the event at one time. The system will be designed in stages.
 basic security features with facial recognition, the alarm, and the tallying device. The second stage will involve
 advanced light features and an audio system.
 
-# Requirements
-## Lights and Audio
-- ffplay
-- yt-dlp
+## Requirements
+- mpv : brew install mpv
+- librosa : pip install librosa
+- matplotlib : pip install matplotlib
+- yt-dlp : pip install yt-dlp
 
 These must be on your PATH
+
