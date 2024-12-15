@@ -1,16 +1,28 @@
 import socket
+import threading
+import networkx
+
 from enum import Enum
 
 
-def check_recv(val: str, client):
-    if val is not None:
-        client.send(val.encode())
+def recv_send(client_thread, receiver_elem):
+    while True:
+        # print(client_thread)
+        try:
+            text = client_thread.recv(1024).decode()
+        except KeyboardInterrupt:
+            exit()
+        # print(text)
+        receiver_elem.send(text.encode())
 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 sock.bind(("", 1234))
-sock.listen(5)
+try:
+    sock.listen(5)
+except KeyboardInterrupt:
+    exit()
 print("server started on port 1234")
 
 color: str = "blue"
@@ -19,7 +31,11 @@ sens_flag: bool = False
 light_flag: bool = False
 clients: list = []
 receiver = None
-while not rec_flag and not (rec_flag == sens_flag == light_flag):
+
+while True:
+    if rec_flag and rec_flag == sens_flag == light_flag:
+        break
+
     # Establish connection with client.
     c, addr = sock.accept()
     handshake: str = c.recv(1024).decode()
@@ -33,6 +49,9 @@ while not rec_flag and not (rec_flag == sens_flag == light_flag):
         light_flag = True
         receiver = c
     print('Got connection from', addr)
-while True:
-    for client in clients:
-        check_recv(client.recv(1024).decode(), receiver)
+
+print("fully connected")
+
+for client in clients:
+    thread = threading.Thread(target=recv_send, args=[client, receiver])
+    thread.start()
