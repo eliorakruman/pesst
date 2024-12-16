@@ -26,12 +26,12 @@ def demo(np):
     n = np.n
 
     # cycle
-    #for i in range(4 * n):
-    #    for j in range(n):
-    #        np[j] = (0, 0, 0)
-    #    np[i % n] = (255, 255, 255)
-    #    np.write()
-    #    time.sleep_ms(25)
+    for i in range(4 * n):
+       for j in range(n):
+           np[j] = (0, 0, 0)
+       np[i % n] = (255, 255, 255)
+       np.write()
+       time.sleep_ms(25)
 
     # bounce
     for i in range(4 * n):
@@ -45,20 +45,20 @@ def demo(np):
         time.sleep_ms(60)
 
     # fade in/out
-    #for i in range(0, 4 * 256, 8):
-     #   for j in range(n):
-     #       if (i // 256) % 2 == 0:
-      #          val = i & 0xff
-       #     else:
-      #          val = 255 - (i & 0xff)
-      #      np[j] = (val, 0, 0)
-       # np.write()
+    for i in range(0, 4 * 256, 8):
+       for j in range(n):
+           if (i // 256) % 2 == 0:
+               val = i & 0xff
+           else:
+               val = 255 - (i & 0xff)
+           np[j] = (val, 0, 0)
+       np.write()
 
     # clear
     for i in range(n):
         np[i] = (0, 0, 0)
     np.write()
-# Function for a "wave" effect (each LED lights up one after another)
+# wave effect 
 def wave_effect(r, g, b):
     
     for i in range(n):
@@ -71,21 +71,20 @@ def wave_effect(r, g, b):
 
 while True:
     # Flash all LEDs with random colors
-    #set_random_colors()  # Set random colors
-    #time.sleep(0.1)  # Short pause to create a dynamic effect
+    set_random_colors()  # Set random colors
+    time.sleep(0.1)  # Short pause to create a dynamic effect
 
     # Flash lights to simulate beats
-    #flash_lights(255, 0, 0)  # Flash Red
-    #flash_lights(0, 255, 0)  # Flash Green
-    #flash_lights(0, 0, 255)  # Flash Blue
+    flash_lights(255, 0, 0)  # Flash Red
+    flash_lights(0, 255, 0)  # Flash Green
+    flash_lights(0, 0, 255)  # Flash Blue
 
-    # Create a wave effect with random colors
-    #wave_effect(0, 255, 0)  # Yellow wave
+    wave_effect(0, 255, 0)  # Yellow wave
     
     demo(np)
     
-    #wave_effect(0, 0, 255)  # Cyan wave
+    wave_effect(0, 0, 255)  # Cyan wave
 
-    # Set more random colors for a lively, pulsing effect
-    #set_random_colors()
-    #time.sleep(0.2)
+    # Ppulsing effect
+    set_random_colors()
+    time.sleep(0.2)
